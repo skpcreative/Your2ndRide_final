@@ -1,0 +1,112 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* Light Mode: White */
+    --foreground: 224 71.4% 4.1%; /* Light Mode: Dark Blue/Black */
+
+    --card: 0 0% 100%;
+    --card-foreground: 224 71.4% 4.1%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71.4% 4.1%;
+
+    --primary: 262.1 83.3% 57.8%; /* Vibrant Purple */
+    --primary-foreground: 0 0% 98%; /* Almost White */
+
+    --secondary: 215.4 16.3% 46.9%; /* Muted Blue/Gray */
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 215.4 16.3% 89.8%; /* Light Gray */
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 355.7 75.8% 57.1%; /* Bright Pink/Red */
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 72.2% 50.6%; /* Red */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 215.4 16.3% 83.9%; /* Light Gray Border */
+    --input: 215.4 16.3% 83.9%;
+    --ring: 262.1 83.3% 57.8%; /* Primary Purple for focus rings */
+
+    --radius: 0.75rem; /* Slightly larger radius for a modern feel */
+  }
+
+  .dark {
+    --background: 224 71.4% 4.1%; /* Dark Mode: Dark Blue/Black */
+    --foreground: 0 0% 98%; /* Dark Mode: Almost White */
+
+    --card: 224 71.4% 4.1%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 224 71.4% 4.1%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 262.1 83.3% 57.8%; /* Vibrant Purple (can remain same or adjust) */
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 215.4 16.3% 15.1%; /* Darker Muted Blue/Gray */
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 215.4 16.3% 15.1%;
+    --muted-foreground: 215.4 16.3% 70%;
+
+    --accent: 355.7 75.8% 57.1%; /* Bright Pink/Red (can remain same or adjust) */
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 50.6%; /* Red (can remain same or adjust for dark) */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 215.4 16.3% 25.1%; /* Darker Gray Border */
+    --input: 215.4 16.3% 25.1%;
+    --ring: 262.1 83.3% 57.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Example of a gradient background for hero sections or cards */
+.bg-gradient-brand {
+  @apply bg-gradient-to-br from-primary via-purple-500 to-accent;
+}
+
+/* Glassmorphism example class */
+.glassmorphic {
+  @apply bg-white/10 backdrop-blur-lg border border-white/20 rounded-lg shadow-lg;
+}
+
+/* Neumorphism example (use with caution, can be tricky for accessibility) */
+.neumorphic-light {
+  @apply bg-gray-100 rounded-lg shadow-[5px_5px_10px_#bebebe,-5px_-5px_10px_#ffffff];
+}
+.neumorphic-dark {
+  @apply bg-gray-800 rounded-lg shadow-[5px_5px_10px_#1f1f1f,-5px_-5px_10px_#2f2f2f];
+}
+
+/* Custom scrollbar (optional, for modern look) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-muted/50;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-primary/70;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary;
+}
