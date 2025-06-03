@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/components/auth/AuthGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,10 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Car, Image as ImageIcon, DollarSign, FileText, ArrowRight, ArrowLeft, CheckCircle } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+import AuthGuard from '@/components/auth/AuthGuard';
 
-const SellPage = () => {
+// The actual SellPage component
+const SellPageContent = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
@@ -23,23 +26,20 @@ const SellPage = () => {
     titleDocument: null, registrationDocument: null,
   });
 
+  // Use the shared auth context
+  const { user: authUser, isAuthenticated } = useAuth();
+  
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUser(user);
-        setFormData(prev => ({
-          ...prev,
-          contactName: user.user_metadata?.full_name || '',
-          contactEmail: user.email || '',
-        }));
-      } else {
-        toast({ title: "Authentication Error", description: "Please log in to sell a vehicle.", variant: "destructive" });
-        navigate('/login');
-      }
-    };
-    fetchUser();
-  }, [toast, navigate]);
+    // Use the user from AuthContext if available
+    if (authUser) {
+      setUser(authUser);
+      setFormData(prev => ({
+        ...prev,
+        contactName: authUser.name || '',
+        contactEmail: authUser.email || '',
+      }));
+    }
+  }, [authUser]);
 
   const totalSteps = 4;
 
@@ -63,8 +63,22 @@ const SellPage = () => {
     }
   };
 
-  const nextStep = () => currentStep < totalSteps && setCurrentStep(currentStep + 1);
-  const prevStep = () => currentStep > 1 && setCurrentStep(currentStep - 1);
+  const nextStep = (e) => {
+    // Prevent default form submission behavior
+    e.preventDefault();
+    
+    if (currentStep < totalSteps) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+  const prevStep = (e) => {
+    // Prevent default form submission behavior
+    e.preventDefault();
+    
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
 
   const uploadFile = async (file, bucket, path) => {
     const { data, error } = await supabase.storage.from(bucket).upload(path, file);
@@ -113,7 +127,8 @@ const SellPage = () => {
         zip_code: formData.zipCode,
         title_document_url: titleDocUrl,
         registration_document_url: regDocUrl,
-        status: 'pending_verification', // Default status
+        status: 'approved', // Auto-approve listings
+        listed_at: new Date().toISOString(), // Add listing date
       };
 
       const { error: insertError } = await supabase.from('listings').insert([listingData]);
@@ -122,7 +137,7 @@ const SellPage = () => {
 
       toast({
         title: "Listing Submitted! 🎉",
-        description: "Your vehicle listing is under review. We'll notify you soon.",
+        description: "Your vehicle is now listed and available for buyers to view.",
       });
       setCurrentStep(1);
       setFormData({ /* Reset form */
@@ -167,7 +182,8 @@ const SellPage = () => {
   );
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -180,7 +196,7 @@ const SellPage = () => {
 
       <div className="max-w-3xl mx-auto bg-card p-6 sm:p-8 rounded-xl shadow-2xl border">
         <ProgressBar />
-        <form onSubmit={handleSubmit}>
+        <form id="sellVehicleForm" onSubmit={handleSubmit} className="space-y-8">
           <AnimatePresence mode="wait">
             {currentStep === 1 && (
               <motion.div key="step1" variants={stepVariants} initial="hidden" animate="visible" exit="exit" className="space-y-6">
@@ -272,11 +288,30 @@ const SellPage = () => {
               <ArrowLeft className="mr-2 h-4 w-4" /> Previous
             </Button>
             {currentStep < totalSteps ? (
-              <Button type="button" onClick={nextStep} disabled={isLoading}>
+              <Button type="button" onClick={nextStep} disabled={isLoading} form="sellVehicleForm">
                 Next <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
-              <Button type="submit" className="bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700" disabled={isLoading}>
+              <Button 
+                type="button" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  // Only submit if checkbox is checked
+                  const termsCheckbox = document.getElementById('termsAgree');
+                  if (termsCheckbox && !termsCheckbox.checked) {
+                    toast({
+                      title: "Terms Agreement Required",
+                      description: "Please agree to the Terms of Service before submitting.",
+                      variant: "destructive"
+                    });
+                    return;
+                  }
+                  // Manually submit the form
+                  handleSubmit(e);
+                }} 
+                className="bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700" 
+                disabled={isLoading}
+              >
                 {isLoading ? 'Submitting...' : (<>Submit Listing <CheckCircle className="ml-2 h-4 w-4" /></>)}
               </Button>
             )}
@@ -284,6 +319,16 @@ const SellPage = () => {
         </form>
       </div>
     </div>
+    </>
+  );
+};
+
+// Wrapper component with AuthGuard
+const SellPage = () => {
+  return (
+    <AuthGuard>
+      <SellPageContent />
+    </AuthGuard>
   );
 };
 

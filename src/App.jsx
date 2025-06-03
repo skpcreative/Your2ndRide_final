@@ -9,9 +9,14 @@ import BuyPage from '@/pages/BuyPage';
 import AboutPage from '@/pages/AboutPage';
 import ContactPage from '@/pages/ContactPage';
 import WishlistPage from '@/pages/WishlistPage';
+import ProfilePage from '@/pages/ProfilePage';
+import ChatListPage from '@/pages/ChatListPage';
+import ChatPage from '@/pages/ChatPage';
 import LoginPage from '@/pages/LoginPage';
 import SignUpPage from '@/pages/SignUpPage';
 import NotFoundPage from '@/pages/NotFoundPage';
+import AuthGuard from '@/components/auth/AuthGuard';
+import AdminGuard from '@/components/auth/AdminGuard';
 
 // Admin imports
 import AdminLayout from '@/components/admin/AdminLayout';
@@ -22,6 +27,7 @@ import AdminReportsPage from '@/pages/admin/AdminReportsPage';
 import AdminSettingsPage from '@/pages/admin/AdminSettingsPage';
 import VehicleDetailsPage from '@/pages/VehicleDetailsPage';
 import { supabase } from '@/lib/supabaseClient';
+import { SiteSettingsProvider } from '@/contexts/SiteSettingsContext';
 
 const MainLayout = () => {
   return (
@@ -74,18 +80,21 @@ const AuthManager = () => {
     <Routes>
       <Route element={<MainLayout />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/sell" element={isAuthenticated ? <SellPage /> : <Navigate to="/login" replace />} />
+        <Route path="/sell" element={<AuthGuard><SellPage /></AuthGuard>} />
         <Route path="/buy" element={<BuyPage />} />
         <Route path="/vehicle/:id" element={<VehicleDetailsPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
-        <Route path="/wishlist" element={isAuthenticated ? <WishlistPage /> : <Navigate to="/login" replace />} />
+        <Route path="/wishlist" element={<AuthGuard><WishlistPage /></AuthGuard>} />
+        <Route path="/profile" element={<AuthGuard><ProfilePage /></AuthGuard>} />
+        <Route path="/chat" element={<AuthGuard><ChatListPage /></AuthGuard>} />
+        <Route path="/chat/:sellerId" element={<AuthGuard><ChatPage /></AuthGuard>} />
       </Route>
       
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignUpPage />} />
 
-      <Route path="/admin" element={isAdminUser ? <AdminLayout /> : <Navigate to="/login" replace />}>
+      <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboardPage />} />
         <Route path="users" element={<AdminUsersPage />} />
@@ -100,7 +109,11 @@ const AuthManager = () => {
 }
 
 function App() {
-  return <AuthManager />;
+  return (
+    <SiteSettingsProvider>
+      <AuthManager />
+    </SiteSettingsProvider>
+  );
 }
 
 export default App;
