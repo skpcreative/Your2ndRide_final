@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import Navbar from '@/components/shared/Navbar';
@@ -101,6 +100,8 @@ const AuthManager = () => {
         <Route path="listings" element={<AdminListingsPage />} />
         <Route path="reports" element={<AdminReportsPage />} />
         <Route path="settings" element={<AdminSettingsPage />} />
+        {/* Catch all other routes */}
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />
