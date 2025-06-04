@@ -1,13 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Car, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import { useSiteSettings } from '@/contexts/SiteSettingsContext';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
-
-  // Placeholder for dynamic content (e.g., from admin settings)
-  const contactEmail = "info@your2ndride.com";
-  const contactPhone = "+1 (555) 123-4567";
+  const { siteSettings } = useSiteSettings();
 
   return (
     <footer className="bg-muted/50 text-muted-foreground py-12">
@@ -16,11 +14,17 @@ const Footer = () => {
           {/* About Section */}
           <div>
             <Link to="/" className="flex items-center space-x-2 text-primary mb-4">
-              <Car className="h-8 w-8" />
-              <span className="text-2xl font-bold text-foreground">Your<span className="text-accent">2nd</span>Ride</span>
+              {siteSettings.logo_url ? (
+                <img src={siteSettings.logo_url} alt="Your2ndRide Logo" className="h-10 w-auto" />
+              ) : (
+                <>
+                  <Car className="h-8 w-8" />
+                  <span className="text-2xl font-bold text-foreground">Your<span className="text-accent">2nd</span>Ride</span>
+                </>
+              )}
             </Link>
             <p className="text-sm">
-              Your premier platform for buying and selling pre-owned vehicles. Find your next ride or sell your current one with ease and confidence.
+              {siteSettings.footer_text || 'Your premier platform for buying and selling pre-owned vehicles. Find your next ride or sell your current one with ease and confidence.'}
             </p>
           </div>
 
@@ -40,9 +44,19 @@ const Footer = () => {
           <div>
             <p className="font-semibold text-foreground mb-4">Contact Us</p>
             <ul className="space-y-2 text-sm">
-              <li><span className="font-medium">Email:</span> <a href={`mailto:${contactEmail}`} className="hover:text-primary transition-colors">{contactEmail}</a></li>
-              <li><span className="font-medium">Phone:</span> <a href={`tel:${contactPhone}`} className="hover:text-primary transition-colors">{contactPhone}</a></li>
-              {/* Add Address if available */}
+              <li className="flex items-center">
+                <span className="mr-2">📧</span> 
+                <a href={`mailto:${siteSettings.contact_email || 'info@your2ndride.com'}`} className="hover:text-primary transition-colors">
+                  {siteSettings.contact_email || 'info@your2ndride.com'}
+                </a>
+              </li>
+              <li className="flex items-center">
+                <span className="mr-2">📞</span> 
+                <a href={`tel:${siteSettings.contact_phone || '+1 (555) 123-4567'}`} className="hover:text-primary transition-colors">
+                  {siteSettings.contact_phone || '+1 (555) 123-4567'}
+                </a>
+              </li>
+              <li className="flex items-center"><span className="mr-2">🏢</span> 123 Auto Lane, Car City, CC 12345</li>
             </ul>
             <div className="flex space-x-4 mt-6">
               <a href="#" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><Facebook size={20} /></a>
@@ -65,7 +79,7 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-border mt-8 pt-8 text-center text-sm">
-          <p>&copy; {currentYear} Your2ndRide. All rights reserved.</p>
+          <p>{siteSettings.footer_text || `© ${currentYear} Your2ndRide. All rights reserved.`}</p>
         </div>
       </div>
     </footer>

@@ -9,6 +9,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
 import { UserPlus, Car } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import Navbar from '@/components/shared/Navbar';
+import Footer from '@/components/shared/Footer';
 
 const SignUpPage = () => {
   const navigate = useNavigate();
@@ -48,7 +50,23 @@ const SignUpPage = () => {
       
       // Supabase signUp automatically signs in the user if email confirmation is not required.
       // If email confirmation is required, data.user will be null initially until confirmed.
-      if (data.user) {
+      if (data.user && data.session) {
+        // Store user token and data in localStorage
+        localStorage.setItem('userToken', data.session.access_token);
+        
+        // Create a user data object with necessary information
+        const userData = {
+          id: data.user.id,
+          email: data.user.email,
+          name: name || email.split('@')[0],
+          role: data.user.user_metadata?.role || 'user',
+        };
+        
+        localStorage.setItem('userData', JSON.stringify(userData));
+        
+        // Dispatch a storage event to notify other components
+        window.dispatchEvent(new Event('storage'));
+        
         toast({ title: "Account Created! 🎉", description: "Welcome to Your2ndRide! You are now logged in." });
         navigate('/');
       } else if (data.session === null && !data.user) {
@@ -77,7 +95,9 @@ const SignUpPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
+    <>
+      <Navbar />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 py-24">
       <motion.div variants={cardVariants} initial="hidden" animate="visible">
         <Card className="w-full max-w-md shadow-2xl border-primary/20">
           <CardHeader className="text-center">
@@ -152,6 +172,8 @@ const SignUpPage = () => {
         </Card>
       </motion.div>
     </div>
+    <Footer />
+    </>
   );
 };
 

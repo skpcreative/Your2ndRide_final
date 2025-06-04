@@ -53,11 +53,12 @@ const AdminLayout = () => {
 
   const SidebarContent = ({ mobile = false }) => (
     <motion.div
-      className={`fixed ${mobile ? 'lg:hidden inset-y-0 left-0 z-50' : 'hidden lg:flex sticky top-0'} h-screen flex-col justify-between bg-gradient-to-b from-slate-900 to-slate-800 text-slate-100 p-4 shadow-2xl`}
+      className={`${mobile ? 'fixed lg:hidden inset-y-0 left-0 z-50' : 'h-full'} flex flex-col justify-between bg-gradient-to-b from-slate-900 to-slate-800 text-slate-100 p-4 shadow-2xl`}
       variants={mobile ? mobileSidebarVariants : sidebarVariants}
       initial={mobile ? "closed" : (isSidebarOpen ? "open" : "closed")}
       animate={mobile ? (isSidebarOpen ? "open" : "closed") : (isSidebarOpen ? "open" : "closed")}
       key={mobile ? "mobile-sidebar" : "desktop-sidebar"}
+      style={{ height: mobile ? '100vh' : '100%' }}
     >
       <div>
         <div className={`flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'} mb-10 pt-3`}>
@@ -108,8 +109,12 @@ const AdminLayout = () => {
 
   return (
     <div className="flex min-h-screen bg-muted/40">
-      <SidebarContent />
+      {/* Desktop Sidebar - Fixed width, no margin issues */}
+      <div className="hidden lg:block w-auto">
+        <SidebarContent />
+      </div>
       
+      {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
           <motion.div 
@@ -121,17 +126,17 @@ const AdminLayout = () => {
           />
         )}
       </AnimatePresence>
+      
+      {/* Mobile Sidebar */}
       <SidebarContent mobile={true} />
       
-      <motion.main 
-        className="flex-1 p-6 md:p-10 overflow-auto transition-all duration-300 ease-in-out"
-        animate={{ marginLeft: isSidebarOpen && window.innerWidth >= 1024 ? "280px" : (window.innerWidth >=1024 ? "80px" : "0px") }}
-      >
+      {/* Main Content - Takes remaining space with no margin */}
+      <main className="flex-1 p-6 md:p-10 overflow-auto">
         <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="lg:hidden mb-4 hover:bg-slate-200">
           <Menu className="h-6 w-6" />
         </Button>
         <Outlet />
-      </motion.main>
+      </main>
     </div>
   );
 };

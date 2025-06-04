@@ -1,11 +1,65 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { ArrowRight, Search, TrendingUp, CheckCircle, MessageSquare, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useToast } from '@/components/ui/use-toast';
+import { useSiteSettings } from '@/contexts/SiteSettingsContext';
 
 const HomePage = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { siteSettings, isLoading } = useSiteSettings();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [searchParams, setSearchParams] = useState({
+    keywords: '',
+    make: '',
+    model: ''
+  });
+  
+  useEffect(() => {
+    // Check if user is authenticated
+    const userToken = localStorage.getItem('userToken');
+    setIsAuthenticated(!!userToken);
+    
+    // Listen for storage changes (login/logout)
+    const handleStorageChange = () => {
+      const token = localStorage.getItem('userToken');
+      setIsAuthenticated(!!token);
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+  
+  const handleSellClick = (e) => {
+    if (!isAuthenticated) {
+      e.preventDefault();
+      toast({ 
+        title: "Authentication Required", 
+        description: "Please log in to sell your vehicle.", 
+        variant: "destructive" 
+      });
+      navigate('/login', { state: { from: '/sell' } });
+    }
+    // If authenticated, the Link will work normally
+  };
+
+  const handleSearch = () => {
+    // Implement search functionality
+    console.log('Searching with params:', searchParams);
+    // You would typically make an API call here with the search parameters
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setSearchParams(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   const featuredListings = [
     { id: 1, name: 'Sedan X', price: '$15,000', image: 'Modern blue sedan', make: 'Alpha Motors' },
     { id: 2, name: 'SUV Max', price: '$25,000', image: 'Spacious family SUV in silver', make: 'Beta Autos' },
@@ -51,7 +105,7 @@ const HomePage = () => {
             initial="hidden"
             animate="visible"
           >
-            Find Your Next Ride, Effortlessly.
+            {siteSettings.hero_text_headline || 'Find Your Next Ride, Effortlessly.'}
           </motion.h1>
           <motion.p 
             className="text-lg md:text-xl mb-10 max-w-2xl mx-auto"
@@ -60,8 +114,8 @@ const HomePage = () => {
             animate="visible"
             style={{ transitionDelay: '0.2s' }}
           >
-            Your2ndRide connects buyers and sellers of quality pre-owned vehicles.
-            Discover great deals or list your car today!
+            {siteSettings.hero_text_subheadline || 'Your2ndRide connects buyers and sellers of quality pre-owned vehicles.'}
+            {!siteSettings.hero_text_subheadline && ' Discover great deals or list your car today!'}
           </motion.p>
           <motion.div 
             className="flex flex-col sm:flex-row gap-4 justify-center"
@@ -75,8 +129,8 @@ const HomePage = () => {
                 Browse Vehicles <Search className="ml-2 h-5 w-5" />
               </Link>
             </Button>
-            <Button variant="outline" size="lg" asChild className="border-white text-white hover:bg-white/10 shadow-lg transform hover:scale-105 transition-transform duration-300">
-              <Link to="/sell">
+            <Button variant="outline" size="lg" asChild className="border-white bg-white/20 text-white hover:bg-white/30 shadow-lg transform hover:scale-105 transition-transform duration-300 font-bold">
+              <Link to="/sell" onClick={handleSellClick} style={{color: 'white', fontWeight: 'bold', textShadow: '0 0 3px rgba(0,0,0,0.5)'}}>
                 Sell Your Car <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
@@ -93,10 +147,37 @@ const HomePage = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <input type="text" placeholder="Keywords (e.g., Honda Civic, Red)" className="p-3 border rounded-md focus:ring-primary focus:border-primary" />
-              <input type="text" placeholder="Make" className="p-3 border rounded-md focus:ring-primary focus:border-primary" />
-              <input type="text" placeholder="Model" className="p-3 border rounded-md focus:ring-primary focus:border-primary" />
-              <Button size="lg" className="w-full bg-gradient-brand text-primary-foreground">Search Now</Button>
+              <input
+                type="text"
+                name="keywords"
+                value={searchParams.keywords}
+                onChange={handleInputChange}
+                placeholder="Keywords (e.g., Honda Civic, Red)"
+                className="p-3 border rounded-md focus:ring-primary focus:border-primary"
+              />
+              <input
+                type="text"
+                name="make"
+                value={searchParams.make}
+                onChange={handleInputChange}
+                placeholder="Make"
+                className="p-3 border rounded-md focus:ring-primary focus:border-primary"
+              />
+              <input
+                type="text"
+                name="model"
+                value={searchParams.model}
+                onChange={handleInputChange}
+                placeholder="Model"
+                className="p-3 border rounded-md focus:ring-primary focus:border-primary"
+              />
+              <Button
+                size="lg"
+                onClick={handleSearch}
+                className="w-full bg-gradient-brand text-primary-foreground hover:opacity-90 transition-opacity"
+              >
+                Search Now
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -104,24 +185,26 @@ const HomePage = () => {
 
       <motion.section className="container mx-auto px-4 sm:px-6 lg:px-8" variants={staggerContainer} initial="hidden" animate="visible">
         <h2 className="text-3xl font-bold mb-8 text-center text-primary">Featured Listings</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {featuredListings.map((listing) => (
-            <motion.div key={listing.id} variants={fadeIn}>
-              <Card className="overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300 group">
-                <div className="relative h-56 bg-gray-200">
-                  <img  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt={listing.image} src="https://images.unsplash.com/photo-1595872018818-97555653a011" />
-                  <div className="absolute top-2 left-2 bg-accent text-accent-foreground px-2 py-1 text-xs font-semibold rounded">{listing.make}</div>
-                </div>
-                <CardContent className="p-6">
-                  <CardTitle className="text-xl font-semibold mb-1 group-hover:text-primary transition-colors">{listing.name}</CardTitle>
-                  <p className="text-2xl font-bold text-primary mb-3">{listing.price}</p>
-                  <Button asChild className="w-full mt-2">
-                    <Link to={`/vehicle/${listing.id}`}>View Details</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+        <div className="relative overflow-hidden">
+          <div className="flex space-x-6 overflow-x-auto scrollbar-hide snap-x snap-mandatory py-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {featuredListings.map((listing) => (
+              <motion.div key={listing.id} variants={fadeIn}>
+                <Card className="overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300 group">
+                  <div className="relative h-56 bg-gray-200">
+                    <img  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt={listing.image} src="https://images.unsplash.com/photo-1595872018818-97555653a011" />
+                    <div className="absolute top-2 left-2 bg-accent text-accent-foreground px-2 py-1 text-xs font-semibold rounded">{listing.make}</div>
+                  </div>
+                  <CardContent className="p-6">
+                    <CardTitle className="text-xl font-semibold mb-1 group-hover:text-primary transition-colors">{listing.name}</CardTitle>
+                    <p className="text-2xl font-bold text-primary mb-3">{listing.price}</p>
+                    <Button asChild className="w-full mt-2">
+                      <Link to={`/vehicle/${listing.id}`}>View Details</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
         </div>
         <div className="text-center mt-12">
           <Button variant="outline" size="lg" asChild>
@@ -156,9 +239,9 @@ const HomePage = () => {
         </div>
       </motion.section>
 
-      <motion.section className="container mx-auto px-4 sm:px-6 lg:px-8" variants={fadeIn} initial="hidden" animate="visible">
+      <motion.section className="container mx-auto px-4 sm:px-6 lg:px-8 bg-accent/5 py-12 rounded-lg" variants={fadeIn} initial="hidden" animate="visible">
         <h2 className="text-3xl font-bold mb-8 text-center text-primary">Recently Added</h2>
-        <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
           {recentListings.map((listing) => (
             <motion.div key={listing.id} variants={fadeIn}>
               <Card className="flex flex-col md:flex-row items-center shadow-md hover:shadow-xl transition-shadow duration-300">
@@ -229,11 +312,6 @@ const HomePage = () => {
             <Button size="lg" asChild className="bg-white text-primary hover:bg-gray-100 shadow-lg transform hover:scale-105 transition-transform duration-300">
               <Link to="/signup">
                 Create Account <TrendingUp className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
-            <Button variant="outline" size="lg" asChild className="border-white text-white hover:bg-white/10 shadow-lg transform hover:scale-105 transition-transform duration-300">
-              <Link to="/contact">
-                Learn More <CheckCircle className="ml-2 h-5 w-5" />
               </Link>
             </Button>
           </div>

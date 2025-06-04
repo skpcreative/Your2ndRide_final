@@ -6,10 +6,105 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Search, Filter, X, ArrowRight } from 'lucide-react';
+import { Search, Filter, X, ArrowRight, ArrowUpDown, SortAsc, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+
+// Reliable fallback images for different vehicle types
+const fallbackImages = {
+  default: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?q=80&w=1470",
+  sedan: "https://images.unsplash.com/photo-1580273916550-e323be2ae537?q=80&w=1528",
+  suv: "https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?q=80&w=1471",
+  truck: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=1469",
+  luxury: "https://images.unsplash.com/photo-1549399542-7e8f2e928464?q=80&w=1469",
+  sports: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?q=80&w=1470",
+  convertible: "https://images.unsplash.com/photo-1583121274602-3e2820c69888?q=80&w=1470",
+  hatchback: "https://images.unsplash.com/photo-1471444928139-48c5bf5173f8?q=80&w=1632",
+  van: "https://images.unsplash.com/photo-1600772337092-a55138d83a7a?q=80&w=1374"
+};
+
+// Custom dropdown component for sorting
+const SortDropdown = ({ value, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  const options = [
+    { value: 'newest', label: 'Newest First' },
+    { value: 'oldest', label: 'Oldest First' },
+    { value: 'price-low', label: 'Price: Low to High' },
+    { value: 'price-high', label: 'Price: High to Low' },
+    { value: 'name-az', label: 'Name: A to Z' },
+    { value: 'name-za', label: 'Name: Z to A' },
+  ];
+  
+  const currentOption = options.find(option => option.value === value) || options[0];
+  
+  return (
+    <div className="relative">
+      <Button 
+        variant="outline" 
+        className="w-full md:w-[180px] flex items-center justify-between"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <div className="flex items-center">
+          <SortAsc className="mr-2 h-4 w-4" />
+          <span>{currentOption.label}</span>
+        </div>
+        <ChevronDown className="h-4 w-4 ml-2" />
+      </Button>
+      
+      {isOpen && (
+        <div className="absolute z-10 mt-1 w-full bg-background rounded-md shadow-lg border border-border">
+          <div className="py-1">
+            {options.map((option) => (
+              <button
+                key={option.value}
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-muted ${option.value === value ? 'bg-muted' : ''}`}
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Helper function to get a fallback image based on vehicle make or type
+const getFallbackImage = (make, model) => {
+  if (!make) return fallbackImages.default;
+  
+  make = make.toLowerCase();
+  const modelLower = model ? model.toLowerCase() : '';
+  
+  // Check for luxury brands
+  if (['mercedes', 'bmw', 'audi', 'lexus', 'porsche', 'jaguar', 'tesla'].some(brand => make.includes(brand))) {
+    return fallbackImages.luxury;
+  }
+  
+  // Check for sports cars
+  if (['corvette', 'mustang', 'camaro', 'ferrari', 'lamborghini', 'porsche'].some(brand => make.includes(brand) || modelLower.includes(brand))) {
+    return fallbackImages.sports;
+  }
+  
+  // Check for trucks
+  if (['f-150', 'silverado', 'ram', 'sierra', 'tacoma', 'tundra', 'ranger'].some(brand => make.includes(brand) || modelLower.includes(brand))) {
+    return fallbackImages.truck;
+  }
+  
+  // Check for SUVs
+  if (['suv', 'explorer', 'tahoe', 'suburban', 'highlander', 'cr-v', 'rav4'].some(brand => make.includes(brand) || modelLower.includes(brand))) {
+    return fallbackImages.suv;
+  }
+  
+  // Default to sedan for most other cars
+  return fallbackImages.sedan;
+};
 
 const BuyPage = () => {
   const [allListings, setAllListings] = useState([]);
@@ -20,64 +115,131 @@ const BuyPage = () => {
   const [selectedMakes, setSelectedMakes] = useState([]);
   const [availableMakes, setAvailableMakes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sortOption, setSortOption] = useState('newest'); // Default sort by newest
 
-  useEffect(() => {
-    const fetchListings = async () => {
+  // Function to fetch listings
+  const fetchListings = async () => {
+    try {
       setLoading(true);
+      console.log('Fetching listings from Supabase...');
+      
+      // Fetch all listings - we'll filter on the client side
       const { data, error } = await supabase
         .from('listings')
-        .select(`
-          id,
-          make,
-          model,
-          year,
-          price,
-          mileage,
-          photo_urls,
-          location,
-          status
-        `)
-        .eq('status', 'active'); // Only show active listings
+        .select('*');
 
       if (error) {
         console.error('Error fetching listings:', error);
         setAllListings([]);
       } else {
-        const formattedListings = data.map(item => ({
-          ...item,
-          name: `${item.make} ${item.model} ${item.year}`, // Construct name
-          image: item.photo_urls && item.photo_urls.length > 0 ? item.photo_urls[0] : 'Placeholder vehicle image' // Use first photo as main image
-        }));
+        console.log(`Found ${data?.length || 0} listings:`, data);
+        
+        // Filter for active or approved listings
+        const activeListings = data?.filter(item => 
+          item.status === 'approved' || item.status === 'active' || !item.status
+        ) || [];
+        
+        // Process and validate each listing
+        const formattedListings = activeListings.map(item => {
+          // Check if photo_urls is valid and contains actual URLs
+          let imageUrl = getFallbackImage(item.make || '', item.model || ''); // Use our smart fallback system
+        
+          // Validate photo_urls
+          if (item.photo_urls && Array.isArray(item.photo_urls) && item.photo_urls.length > 0) {
+            // Make sure the URL is a string and not null/undefined
+            const firstPhoto = item.photo_urls[0];
+            if (typeof firstPhoto === 'string' && firstPhoto.trim() !== '') {
+              // Check if it's a valid URL or a Supabase storage path
+              if (firstPhoto.startsWith('http')) {
+                imageUrl = firstPhoto;
+              } else if (firstPhoto.includes('vehicle-assets')) {
+                // Try to construct a proper Supabase URL
+                try {
+                  const publicUrl = supabase.storage.from('vehicle-assets').getPublicUrl(firstPhoto).data.publicUrl;
+                  if (publicUrl) imageUrl = publicUrl;
+                } catch (err) {
+                  console.log('Error getting public URL for', firstPhoto, err);
+                }
+              }
+            }
+          }
+          
+          return {
+            ...item,
+            name: `${item.make || ''} ${item.model || ''} ${item.year || ''}`.trim() || 'Unnamed Vehicle', // Construct name with fallbacks
+            image: imageUrl,
+            createdAt: new Date(item.created_at || item.listed_at || Date.now()) // For sorting
+          };
+        });
+        
+        console.log('Formatted listings:', formattedListings);
         setAllListings(formattedListings);
         
         // Populate available makes from fetched listings
-        const makes = [...new Set(formattedListings.map(listing => listing.make))].filter(Boolean);
-        setAvailableMakes(makes);
+        const makes = [...new Set(formattedListings.map(listing => listing.make).filter(Boolean))];
+        setAvailableMakes(makes.sort()); // Sort makes alphabetically
       }
+    } catch (error) {
+      console.error('Unexpected error in fetchListings:', error);
+      setAllListings([]);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
+  
+  // Call fetchListings when component mounts
+  useEffect(() => {
     fetchListings();
   }, []);
 
   useEffect(() => {
-    let result = allListings;
+    let result = [...allListings]; // Create a copy to avoid mutating the original
 
+    // Apply filters
     if (searchTerm) {
       result = result.filter(listing =>
-        listing.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (listing.make && listing.make.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (listing.model && listing.model.toLowerCase().includes(searchTerm.toLowerCase()))
+        (listing.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (listing.make?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (listing.model?.toLowerCase() || '').includes(searchTerm.toLowerCase())
       );
     }
 
-    result = result.filter(listing => listing.price >= priceRange[0] && listing.price <= priceRange[1]);
+    // Price range filter
+    result = result.filter(listing => {
+      const price = Number(listing.price) || 0;
+      return price >= priceRange[0] && price <= priceRange[1];
+    });
 
+    // Make filter
     if (selectedMakes.length > 0) {
-      result = result.filter(listing => selectedMakes.includes(listing.make));
+      result = result.filter(listing => listing.make && selectedMakes.includes(listing.make));
     }
     
+    // Apply sorting
+    result = sortListings(result, sortOption);
+    
     setFilteredListings(result);
-  }, [searchTerm, priceRange, selectedMakes, allListings]);
+  }, [searchTerm, priceRange, selectedMakes, allListings, sortOption]);
+  
+  // Function to sort listings based on selected option
+  const sortListings = (listings, option) => {
+    switch(option) {
+      case 'price-low':
+        return [...listings].sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+      case 'price-high':
+        return [...listings].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0));
+      case 'newest':
+        return [...listings].sort((a, b) => b.createdAt - a.createdAt);
+      case 'oldest':
+        return [...listings].sort((a, b) => a.createdAt - b.createdAt);
+      case 'name-az':
+        return [...listings].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      case 'name-za':
+        return [...listings].sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+      default:
+        return listings;
+    }
+  };
 
   const handleMakeChange = (make) => {
     setSelectedMakes(prev =>
@@ -89,6 +251,7 @@ const BuyPage = () => {
     setSearchTerm('');
     setPriceRange([0, 100000]);
     setSelectedMakes([]);
+    setSortOption('newest'); // Reset sorting to default
     // setShowFilters(false); // Keep filters open or close based on preference
   };
 
@@ -135,9 +298,20 @@ const BuyPage = () => {
           />
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
         </div>
-        <Button onClick={() => setShowFilters(!showFilters)} variant="outline" className="w-full md:w-auto">
-          <Filter className="mr-2 h-4 w-4" /> {showFilters ? 'Hide' : 'Show'} Filters
-        </Button>
+        <div className="flex gap-2 w-full md:w-auto">
+          <SortDropdown value={sortOption} onChange={setSortOption} />
+          <Button onClick={() => setShowFilters(!showFilters)} variant="outline" className="w-full md:w-auto">
+            <Filter className="mr-2 h-4 w-4" /> {showFilters ? 'Hide' : 'Show'} Filters
+          </Button>
+          <Button 
+            onClick={fetchListings} 
+            variant="outline" 
+            className="w-full md:w-auto" 
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : 'Refresh'}
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
@@ -202,7 +376,12 @@ const BuyPage = () => {
         </AnimatePresence>
 
         <main className={`flex-grow ${showFilters ? 'lg:w-3/4' : 'w-full'}`}>
-          {filteredListings.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading vehicles...</p>
+            </div>
+          ) : filteredListings.length > 0 ? (
             <motion.div 
               className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8"
               initial="hidden"
@@ -213,16 +392,45 @@ const BuyPage = () => {
                 <motion.div key={listing.id} variants={cardVariants}>
                   <Card className="overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300 group flex flex-col h-full">
                     <div className="relative h-56 bg-gray-200">
+                      {/* Vehicle image with multiple fallbacks */}
                       <img    
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                        alt={listing.name || 'Vehicle image'} src="https://images.unsplash.com/photo-1595872018818-97555653a011" />
-                      <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold rounded-full shadow-md">{listing.make}</div>
+                        alt={listing.name || 'Vehicle image'} 
+                        src={listing.image} 
+                        onError={(e) => {
+                          console.log('Image failed to load, using smart fallback');
+                          e.target.onerror = null; 
+                          // Use our smart fallback system based on vehicle type
+                          e.target.src = getFallbackImage(listing.make, listing.model);
+                        }}
+                      />
+                      <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold rounded-full shadow-md">
+                        {listing.make || 'Vehicle'}
+                      </div>
+                      {listing.status === 'approved' && (
+                        <div className="absolute top-2 right-2 bg-green-600 text-white px-3 py-1 text-xs font-semibold rounded-full shadow-md">
+                          New
+                        </div>
+                      )}
                     </div>
                     <CardContent className="p-6 flex flex-col flex-grow">
-                      <CardTitle className="text-xl font-semibold mb-1 group-hover:text-primary transition-colors">{listing.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground mb-1">{listing.year} &bull; {listing.mileage?.toLocaleString()} miles</p>
-                      <p className="text-2xl font-bold text-primary mb-3">${listing.price?.toLocaleString()}</p>
-                      <p className="text-sm text-muted-foreground mb-4">{listing.location || 'N/A'}</p>
+                      <CardTitle className="text-xl font-semibold mb-1 group-hover:text-primary transition-colors">
+                        {listing.name}
+                      </CardTitle>
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {listing.year} {listing.mileage ? `• ${listing.mileage.toLocaleString()} miles` : ''}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(listing.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <p className="text-2xl font-bold text-primary mb-3">
+                        {listing.price ? `$${Number(listing.price).toLocaleString()}` : 'Contact for price'}
+                      </p>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        {listing.location || 'Location not specified'}
+                      </p>
                       <Button asChild className="w-full mt-auto">
                         <Link to={`/vehicle/${listing.id}`}>
                           View Details <ArrowRight className="ml-2 h-4 w-4" />
@@ -234,17 +442,27 @@ const BuyPage = () => {
               ))}
             </motion.div>
           ) : (
-            <motion.div 
-              className="text-center py-12"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <img  className="mx-auto h-40 w-40 text-muted-foreground mb-6" alt="No results found icon" src="https://images.unsplash.com/photo-1682624400764-d2c9eaeae972" />
-              <h3 className="text-2xl font-semibold mb-2">No Vehicles Found</h3>
-              <p className="text-muted-foreground">Try adjusting your search or filters, or check back later for new listings!</p>
-              <Button onClick={clearFilters} className="mt-6">Clear Filters and Search</Button>
-            </motion.div>
+            <div className="text-center py-12 border-2 border-dashed border-muted-foreground/20 rounded-lg p-8">
+              <div className="text-4xl mb-4">🔍</div>
+              <h3 className="text-xl font-semibold mb-2">No Vehicles Found</h3>
+              <p className="text-muted-foreground mb-6">We couldn't find any vehicles matching your criteria.</p>
+              <div className="flex flex-col gap-4 max-w-md mx-auto">
+                <div className="text-left">
+                  <h4 className="font-medium mb-2">Possible reasons:</h4>
+                  <ul className="list-disc pl-5 text-muted-foreground">
+                    <li>There are no approved or active listings in the database</li>
+                    <li>Your filters are too restrictive</li>
+                    <li>The database connection might have issues</li>
+                  </ul>
+                </div>
+                <Button onClick={() => {
+                  clearFilters();
+                  fetchListings();
+                }}>
+                  Reset Filters & Refresh
+                </Button>
+              </div>
+            </div>
           )}
         </main>
       </div>

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,9 +9,13 @@ import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
 import { LogIn, Car } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
+import Navbar from '@/components/shared/Navbar';
+import Footer from '@/components/shared/Footer';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const from = location.state?.from || '/';
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,13 +35,29 @@ const LoginPage = () => {
       }
 
       if (data.user) {
-        toast({ title: "Login Successful!", description: "Welcome back!" });
-        // Check user role from user_metadata (you'll need to set this up in Supabase)
-        if (data.user.user_metadata?.role === 'admin') {
-          navigate('/admin/dashboard');
-        } else {
-          navigate('/');
-        }
+        // Store user token and data in localStorage
+        localStorage.setItem('userToken', data.session.access_token);
+        
+        // Create a user data object with necessary information
+        const userData = {
+          id: data.user.id,
+          email: data.user.email,
+          role: data.user.user_metadata?.role || 'user',
+          name: data.user.user_metadata?.full_name || email.split('@')[0],
+        };
+        
+        localStorage.setItem('userData', JSON.stringify(userData));
+        
+        // Dispatch storage event to notify other components
+        window.dispatchEvent(new Event('storage'));
+        
+        toast({
+          title: "Login Successful",
+          description: "Welcome back to Your2ndRide!",
+        });
+        
+        // Redirect to the page the user was trying to access, or home if none
+        navigate(from);
       } else {
          toast({
           title: "Login Failed",
@@ -62,7 +82,9 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4">
+    <>
+      <Navbar />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 p-4 py-24">
       <motion.div variants={cardVariants} initial="hidden" animate="visible">
         <Card className="w-full max-w-md shadow-2xl border-primary/20">
           <CardHeader className="text-center">
@@ -118,6 +140,8 @@ const LoginPage = () => {
         </Card>
       </motion.div>
     </div>
+    <Footer />
+    </>
   );
 };
 

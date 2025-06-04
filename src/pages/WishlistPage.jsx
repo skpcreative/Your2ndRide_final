@@ -17,61 +17,87 @@ const WishlistPage = () => {
   useEffect(() => {
     const fetchUserAndWishlist = async () => {
       setLoading(true);
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      setUser(currentUser);
+      try {
+        // Get current user
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        setUser(currentUser);
 
-      if (currentUser) {
-        const { data, error } = await supabase
-          .from('wishlist')
-          .select(`
-            id,
-            listing_id,
-            listings (
+        if (currentUser) {
+          console.log('Fetching wishlist for user:', currentUser.id);
+          
+          // Get wishlist items with joined vehicle data
+          const { data, error } = await supabase
+            .from('wishlist') // Using table name 'wishlist'
+            .select(`
               id,
-              make,
-              model,
-              year,
-              price,
-              mileage,
-              photo_urls,
-              status
-            )
-          `)
-          .eq('user_id', currentUser.id)
-          .filter('listings.status', 'eq', 'active'); // Only show active listings in wishlist
+              listing_id,
+              created_at,
+              listings(*)  // Join with listings table
+            `)
+            .eq('user_id', currentUser.id);
 
-        if (error) {
-          console.error('Error fetching wishlist:', error);
-          toast({ title: "Error", description: "Could not load wishlist items.", variant: "destructive" });
-        } else {
-          const formattedItems = data
-            .filter(item => item.listings) // Ensure listing data exists
-            .map(item => ({
-              ...item.listings,
-              wishlist_id: item.id, // Keep track of wishlist item ID for removal
-              name: `${item.listings.make} ${item.listings.model} ${item.listings.year}`,
-              image: item.listings.photo_urls && item.listings.photo_urls.length > 0 ? item.listings.photo_urls[0] : null
-            }));
-          setWishlistItems(formattedItems);
+          if (error) {
+            console.error('Error fetching wishlist:', error);
+            toast({ title: "Error", description: "Could not load wishlist items: " + error.message, variant: "destructive" });
+          } else {
+            console.log('Wishlist data:', data);
+            
+            // Format the data for display
+            const formattedItems = data
+              .filter(item => item.listings) // Ensure listing data exists
+              .map(item => ({
+                ...item.listings,
+                wishlist_id: item.id, // Keep track of wishlist item ID for removal
+                name: `${item.listings.make} ${item.listings.model} ${item.listings.year}`,
+                image: item.listings.photo_urls && item.listings.photo_urls.length > 0 ? item.listings.photo_urls[0] : null
+              }));
+              
+            console.log('Formatted wishlist items:', formattedItems);
+            setWishlistItems(formattedItems);
+          }
         }
+      } catch (err) {
+        console.error('Unexpected error fetching wishlist:', err);
+        toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchUserAndWishlist();
+    
+    // Set up real-time subscription for wishlist changes
+    const wishlistSubscription = supabase
+      .channel('wishlist_changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'wishlist' }, 
+        (payload) => {
+          console.log('Wishlist changed:', payload);
+          // Refresh wishlist data when changes occur
+          fetchUserAndWishlist();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      wishlistSubscription?.unsubscribe();
+    };
   }, [toast]);
 
   const removeFromWishlist = async (wishlistEntryId, vehicleName) => {
     if (!user) return;
+    
+    console.log('Removing wishlist item:', wishlistEntryId);
 
     const { error } = await supabase
-      .from('wishlist')
+      .from('wishlist') // Using table name 'wishlist'
       .delete()
       .eq('id', wishlistEntryId)
       .eq('user_id', user.id);
 
     if (error) {
-      toast({ title: "Error", description: `Could not remove ${vehicleName} from wishlist.`, variant: "destructive" });
+      console.error('Error removing from wishlist:', error);
+      toast({ title: "Error", description: `Could not remove ${vehicleName} from wishlist: ${error.message}`, variant: "destructive" });
     } else {
       setWishlistItems(prevItems => prevItems.filter(item => item.wishlist_id !== wishlistEntryId));
       toast({
@@ -150,19 +176,32 @@ const WishlistPage = () => {
                     {item.image ? (
                        <img    
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                        alt={item.name} src="https://images.unsplash.com/photo-1595872018818-97555653a011" />
+                        alt={item.name} 
+                        src={item.image} 
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://via.placeholder.com/400x300?text=No+Image+Available';
+                        }}
+                      />
                     ) : (
-                      <ImageOff size={48} className="text-muted-foreground"/>
+                      <div className="flex flex-col items-center justify-center text-muted-foreground/70">
+                        <ImageOff size={48} className="mb-2"/>
+                        <p className="text-sm">No image available</p>
+                      </div>
                     )}
                     <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold rounded-full shadow-md">{item.make}</div>
                   </div>
                   <CardContent className="p-6 flex flex-col flex-grow">
                     <CardTitle className="text-xl font-semibold mb-1 group-hover:text-primary transition-colors">{item.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground mb-1">{item.year} &bull; {item.mileage?.toLocaleString()} miles</p>
-                    <p className="text-2xl font-bold text-primary mb-4">${item.price?.toLocaleString()}</p>
+                    <p className="text-sm text-muted-foreground mb-1">
+                      {item.year} • {item.mileage?.toLocaleString() || 'N/A'} miles • {item.transmission || 'N/A'}
+                    </p>
+                    <p className="text-2xl font-bold text-primary mb-4">
+                      ${typeof item.price === 'number' ? item.price.toLocaleString() : 'Price on request'}
+                    </p>
                     
                     <div className="mt-auto space-y-2">
-                      <Button asChild className="w-full">
+                      <Button asChild className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground">
                         <Link to={`/vehicle/${item.id}`}>
                           <Eye className="mr-2 h-4 w-4" /> View Details
                         </Link>
