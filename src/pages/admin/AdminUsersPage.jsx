@@ -57,7 +57,7 @@ const AdminUsersPage = () => {
           email: email, // Real email from auth or placeholder
           role: profile.role || 'user',
           status: profile.banned ? 'banned' : 'active',
-          joinedDate: new Date(profile.created_at || Date.now()).toLocaleDateString(),
+          joinedDate: new Date(profile.updated_at || Date.now()).toLocaleDateString(),
         };
       });
       

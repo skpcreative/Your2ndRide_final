@@ -9,8 +9,7 @@ import AboutPage from '@/pages/AboutPage';
 import ContactPage from '@/pages/ContactPage';
 import WishlistPage from '@/pages/WishlistPage';
 import ProfilePage from '@/pages/ProfilePage';
-import ChatListPage from '@/pages/ChatListPage';
-import ChatPage from '@/pages/ChatPage';
+
 import LoginPage from '@/pages/LoginPage';
 import SignUpPage from '@/pages/SignUpPage';
 import NotFoundPage from '@/pages/NotFoundPage';
@@ -86,8 +85,6 @@ const AuthManager = () => {
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/wishlist" element={<AuthGuard><WishlistPage /></AuthGuard>} />
         <Route path="/profile" element={<AuthGuard><ProfilePage /></AuthGuard>} />
-        <Route path="/chat" element={<AuthGuard><ChatListPage /></AuthGuard>} />
-        <Route path="/chat/:sellerId" element={<AuthGuard><ChatPage /></AuthGuard>} />
       </Route>
       
       <Route path="/login" element={<LoginPage />} />

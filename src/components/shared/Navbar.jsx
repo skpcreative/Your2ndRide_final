@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Car, Menu, X, LogOut, UserCircle, Heart, ShoppingCart, User, Settings, Shield, MessageSquare } from 'lucide-react';
+import { Car, Menu, X, LogOut, UserCircle, Heart, ShoppingCart, User, Settings, Shield,  } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
@@ -26,6 +26,7 @@ const Navbar = () => {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [wishlistCount, setWishlistCount] = useState(0);
   
   // Check authentication status and admin role from profiles table
   useEffect(() => {
@@ -55,15 +56,27 @@ const Navbar = () => {
               // Set admin status based on role in profiles table
               setIsAdmin(profileData.role === 'admin');
             }
+            // Fetch wishlist count
+            const { count, error: wishlistError } = await supabase
+              .from('wishlist')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', parsedUser.id);
+            if (!wishlistError && typeof count === 'number') {
+              setWishlistCount(count);
+            } else {
+              setWishlistCount(0);
+            }
           }
         } catch (error) {
           console.error('Error parsing user data:', error);
           setUser(null);
           setIsAdmin(false);
+          setWishlistCount(0);
         }
       } else {
         setUser(null);
         setIsAdmin(false);
+        setWishlistCount(0);
       }
       setIsLoading(false);
     };
@@ -166,11 +179,13 @@ const Navbar = () => {
           <div className="hidden md:flex items-center space-x-3">
             {isAuthenticated ? (
               <>
-                <Button variant="ghost" size="icon" onClick={() => navigate('/wishlist')} aria-label="Wishlist">
+                <Button variant="ghost" size="icon" onClick={() => navigate('/wishlist')} aria-label="Wishlist" className="relative">
                   <Heart className="h-5 w-5" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => navigate('/cart')} aria-label="Cart">
-                  <ShoppingCart className="h-5 w-5" />
+                  {wishlistCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none border border-background">
+                      {wishlistCount}
+                    </span>
+                  )}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -188,10 +203,6 @@ const Navbar = () => {
                     <DropdownMenuItem onClick={() => navigate('/wishlist')}>
                       <Heart className="mr-2 h-4 w-4" />
                       <span>Wishlist</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/chat')}>
-                      <MessageSquare className="mr-2 h-4 w-4" />
-                      <span>Messages</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/settings')}>
                       <Settings className="mr-2 h-4 w-4" />
@@ -263,14 +274,13 @@ const Navbar = () => {
                   <Button variant="ghost" className="w-full justify-start" onClick={() => { navigate('/profile'); setIsMobileMenuOpen(false); }}>
                     <User className="mr-2 h-5 w-5" /> My Profile
                   </Button>
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => { navigate('/wishlist'); setIsMobileMenuOpen(false); }}>
+                  <Button variant="ghost" className="w-full justify-start relative" onClick={() => { navigate('/wishlist'); setIsMobileMenuOpen(false); }}>
                     <Heart className="mr-2 h-5 w-5" /> Wishlist
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => { navigate('/chat'); setIsMobileMenuOpen(false); }}>
-                    <MessageSquare className="mr-2 h-5 w-5" /> Messages
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => { navigate('/cart'); setIsMobileMenuOpen(false); }}>
-                    <ShoppingCart className="mr-2 h-5 w-5" /> Cart
+                    {wishlistCount > 0 && (
+                      <span className="absolute top-1 right-6 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none border border-background">
+                        {wishlistCount}
+                      </span>
+                    )}
                   </Button>
                   <Button variant="ghost" className="w-full justify-start" onClick={() => { navigate('/settings'); setIsMobileMenuOpen(false); }}>
                     <Settings className="mr-2 h-5 w-5" /> Settings

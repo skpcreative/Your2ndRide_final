@@ -124,23 +124,32 @@ const BuyPage = () => {
       console.log('Fetching listings from Supabase...');
       
       // Fetch all listings - we'll filter on the client side
-      const { data, error } = await supabase
+      const { data, error, status, statusText } = await supabase
         .from('listings')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      console.log('Supabase response:', { status, statusText, dataCount: data?.length, error });
 
       if (error) {
         console.error('Error fetching listings:', error);
         setAllListings([]);
-      } else {
-        console.log(`Found ${data?.length || 0} listings:`, data);
-        
-        // Filter for active or approved listings
-        const activeListings = data?.filter(item => 
-          item.status === 'approved' || item.status === 'active' || !item.status
-        ) || [];
-        
-        // Process and validate each listing
-        const formattedListings = activeListings.map(item => {
+        return;
+      }
+
+      console.log(`Found ${data?.length || 0} listings:`, data);
+      
+      // Filter for active or approved listings
+      const activeListings = data?.filter(item => {
+        const isActive = item.status === 'approved' || item.status === 'active' || !item.status;
+        console.log(`Listing ${item.id} (${item.make} ${item.model}): status=${item.status}, isActive=${isActive}`);
+        return isActive;
+      }) || [];
+      
+      console.log(`Active/Approved listings: ${activeListings.length} of ${data?.length || 0}`);
+      
+      // Process and validate each listing
+      const formattedListings = activeListings.map(item => {
           // Check if photo_urls is valid and contains actual URLs
           let imageUrl = getFallbackImage(item.make || '', item.model || ''); // Use our smart fallback system
         
@@ -164,12 +173,15 @@ const BuyPage = () => {
             }
           }
           
-          return {
+          const listingData = {
             ...item,
-            name: `${item.make || ''} ${item.model || ''} ${item.year || ''}`.trim() || 'Unnamed Vehicle', // Construct name with fallbacks
+            name: `${item.make || ''} ${item.model || ''} ${item.year || ''}`.trim() || 'Unnamed Vehicle',
             image: imageUrl,
-            createdAt: new Date(item.created_at || item.listed_at || Date.now()) // For sorting
+            createdAt: new Date(item.created_at || item.listed_at || Date.now())
           };
+          
+          console.log('Processed listing:', listingData);
+          return listingData;
         });
         
         console.log('Formatted listings:', formattedListings);
@@ -177,12 +189,13 @@ const BuyPage = () => {
         
         // Populate available makes from fetched listings
         const makes = [...new Set(formattedListings.map(listing => listing.make).filter(Boolean))];
-        setAvailableMakes(makes.sort()); // Sort makes alphabetically
-      }
+        console.log('Available makes:', makes);
+      setAvailableMakes(makes.sort()); // Sort makes alphabetically
+      
+      setLoading(false);
     } catch (error) {
       console.error('Unexpected error in fetchListings:', error);
       setAllListings([]);
-    } finally {
       setLoading(false);
     }
   };

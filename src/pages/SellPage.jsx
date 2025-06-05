@@ -22,7 +22,7 @@ const SellPageContent = () => {
   const [formData, setFormData] = useState({
     make: '', model: '', year: '', mileage: '', vin: '', bodyStyle: '', engine: '', transmission: '',
     exteriorColor: '', interiorColor: '', photos: [], description: '', features: [], price: '',
-    contactName: '', contactEmail: '', contactPhone: '', zipCode: '',
+    contactName: '', contactEmail: '', whatsappNumber: '', zipCode: '',
     titleDocument: null, registrationDocument: null,
   });
 
@@ -37,6 +37,7 @@ const SellPageContent = () => {
         ...prev,
         contactName: authUser.name || '',
         contactEmail: authUser.email || '',
+        // whatsappNumber left blank for user input
       }));
     }
   }, [authUser]);
@@ -254,7 +255,7 @@ const SellPageContent = () => {
                 <div><Label htmlFor="price">Price ($)</Label><Input type="number" name="price" id="price" value={formData.price} onChange={handleInputChange} placeholder="e.g., 15000" required /></div>
                 <div><Label htmlFor="contactName">Your Name</Label><Input name="contactName" id="contactName" value={formData.contactName} onChange={handleInputChange} placeholder="Full Name" required /></div>
                 <div><Label htmlFor="contactEmail">Email</Label><Input type="email" name="contactEmail" id="contactEmail" value={formData.contactEmail} onChange={handleInputChange} placeholder="you@example.com" required /></div>
-                <div><Label htmlFor="contactPhone">Phone Number</Label><Input type="tel" name="contactPhone" id="contactPhone" value={formData.contactPhone} onChange={handleInputChange} placeholder="(555) 123-4567" /></div>
+                <div><Label htmlFor="whatsappNumber">WhatsApp Number</Label><Input type="tel" name="whatsappNumber" id="whatsappNumber" value={formData.whatsappNumber} onChange={handleInputChange} placeholder="(555) 123-4567" /></div>
                 <div><Label htmlFor="zipCode">Zip Code</Label><Input name="zipCode" id="zipCode" value={formData.zipCode} onChange={handleInputChange} placeholder="For local pickup" /></div>
               </motion.div>
             )}
