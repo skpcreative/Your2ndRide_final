@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const AdminListingsPage = () => {
   const { toast } = useToast();
@@ -209,6 +210,34 @@ const AdminListingsPage = () => {
     }
   };
 
+  const handleToggleFeatured = async (listingId, currentValue) => {
+    try {
+      const { error } = await supabase
+        .from('listings')
+        .update({ featured: !currentValue })
+        .eq('id', listingId);
+      if (error) {
+        toast({
+          title: 'Error',
+          description: `Failed to update featured status: ${error.message}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      toast({
+        title: 'Featured Updated',
+        description: `Listing has been ${!currentValue ? 'marked as' : 'removed from'} featured.`,
+      });
+      fetchListings();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-700';
@@ -287,6 +316,7 @@ const AdminListingsPage = () => {
                   <TableHead>Seller</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Featured</TableHead>
                   <TableHead>Listed Date</TableHead>
                   <TableHead>Views</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -308,6 +338,13 @@ const AdminListingsPage = () => {
                          listing.status === 'pending_verification' ? 'Pending' : 
                          'Rejected'}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      <Checkbox
+                        checked={!!listing.originalData.featured}
+                        onCheckedChange={() => handleToggleFeatured(listing.id, !!listing.originalData.featured)}
+                        aria-label="Toggle featured"
+                      />
                     </TableCell>
                     <TableCell>{listing.listedDate}</TableCell>
                     <TableCell>{listing.views}</TableCell>

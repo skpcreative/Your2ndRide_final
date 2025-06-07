@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { Routes, Route, Outlet, Navigate, useLocation } from 'react-router-dom';
 import Navbar from '@/components/shared/Navbar';
 import Footer from '@/components/shared/Footer';
 import HomePage from '@/pages/HomePage';
@@ -106,10 +106,19 @@ const AuthManager = () => {
   );
 }
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname]);
+  return null;
+}
+
 function App() {
   return (
     <SiteSettingsProvider>
       <AuthManager />
+      <ScrollToTop />
     </SiteSettingsProvider>
   );
 }

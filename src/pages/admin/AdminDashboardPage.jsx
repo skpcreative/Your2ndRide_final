@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, ListChecks, FileWarning, DollarSign, Activity, RefreshCw } from 'lucide-react';
+import { Users, ListChecks, FileWarning, Activity, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -11,159 +11,94 @@ const AdminDashboardPage = () => {
   const [stats, setStats] = useState([
     { title: "Total Users", value: "--", icon: <Users className="h-6 w-6 text-blue-500" />, trend: "Loading..." },
     { title: "Active Listings", value: "--", icon: <ListChecks className="h-6 w-6 text-green-500" />, trend: "Loading..." },
-    { title: "Pending Verifications", value: "--", icon: <FileWarning className="h-6 w-6 text-yellow-500" />, trend: "Loading..." },
-    { title: "Total Sales (Month)", value: "--", icon: <DollarSign className="h-6 w-6 text-purple-500" />, trend: "Loading..." },
   ]);
   const [recentActivity, setRecentActivity] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Function to fetch real-time data from Supabase
   const fetchDashboardData = async () => {
     try {
       setIsLoading(true);
-      
-      // Get total users count - use a simpler query
+      // Get total users count
       let userCount = 0;
       const { data: userData, error: userError } = await supabase
         .from('profiles')
         .select('id');
-      
-      if (userError) {
-        console.error('Error fetching users:', userError);
-        toast({
-          title: "Error fetching users",
-          description: userError.message,
-          variant: "destructive"
-        });
-      } else {
-        userCount = userData?.length || 0;
-      }
-      
-      // Get active listings count - use a simpler query
+      if (!userError) userCount = userData?.length || 0;
+      // Get active listings count
       let activeListingsCount = 0;
       const { data: activeListings, error: listingsError } = await supabase
         .from('listings')
         .select('id')
         .eq('status', 'approved');
-      
-      if (listingsError) {
-        console.error('Error fetching listings:', listingsError);
-        toast({
-          title: "Error fetching listings",
-          description: listingsError.message,
-          variant: "destructive"
-        });
-      } else {
-        activeListingsCount = activeListings?.length || 0;
-      }
-      
-      // Get pending verifications count (if any still exist)
-      let pendingCount = 0;
-      const { data: pendingListings, error: pendingError } = await supabase
-        .from('listings')
-        .select('id')
-        .eq('status', 'pending_verification');
-      
-      if (pendingError) {
-        console.error('Error fetching pending listings:', pendingError);
-      } else {
-        pendingCount = pendingListings?.length || 0;
-      }
-      
-      // Calculate total sales (dummy calculation for now)
-      const totalSales = activeListingsCount * 1500; // Dummy average price
-      
-      // Update stats with real data
+      if (!listingsError) activeListingsCount = activeListings?.length || 0;
       setStats([
-        { 
-          title: "Total Users", 
-          value: userCount.toString(), 
-          icon: <Users className="h-6 w-6 text-blue-500" />, 
-          trend: `${Math.floor(userCount/10)} new this month` 
+        {
+          title: "Total Users",
+          value: userCount.toString(),
+          icon: <Users className="h-7 w-7 text-blue-600 bg-blue-100 rounded-full p-1" />, 
+          trend: `${Math.floor(userCount/10)} new this month`
         },
-        { 
-          title: "Active Listings", 
-          value: activeListingsCount.toString(), 
-          icon: <ListChecks className="h-6 w-6 text-green-500" />, 
-          trend: `${Math.floor(activeListingsCount/5)} new today` 
-        },
-        { 
-          title: "Pending Verifications", 
-          value: pendingCount.toString(), 
-          icon: <FileWarning className="h-6 w-6 text-yellow-500" />, 
-          trend: pendingCount > 0 ? "Needs attention" : "All clear" 
-        },
-        { 
-          title: "Total Sales (Est.)", 
-          value: `$${totalSales.toLocaleString()}`, 
-          icon: <DollarSign className="h-6 w-6 text-purple-500" />, 
-          trend: "+8.2%" 
-        },
-      ]);
-      
-      // Fetch recent activity
-      try {
-        const { data: recentListings, error: recentError } = await supabase
-          .from('listings')
-          .select('id, make, model, year, status, created_at, user_id')
-          .order('created_at', { ascending: false })
-          .limit(5);
-        
-        if (recentError) {
-          console.error('Error fetching recent listings:', recentError);
-          toast({
-            title: "Error fetching activity",
-            description: recentError.message,
-            variant: "destructive"
-          });
-        } else if (recentListings && recentListings.length > 0) {
-          // Get user data for the listings
-          const userIds = [...new Set(recentListings.map(listing => listing.user_id))];
-          
-          if (userIds.length > 0) {
-            const { data: users, error: usersError } = await supabase
-              .from('profiles')
-              .select('id, email')
-              .in('id', userIds);
-            
-            if (usersError) {
-              console.error('Error fetching users for activity:', usersError);
-            }
-            
-            // Create activity items
-            const activityItems = recentListings.map(listing => {
-              const user = users?.find(u => u.id === listing.user_id);
-              const userEmail = user ? user.email.split('@')[0] : 'Unknown user';
-              const timeAgo = new Date(listing.created_at).toLocaleString();
-              
-              return {
-                id: listing.id,
-                type: listing.status === 'approved' ? 'listing_approved' : 'listing_pending',
-                message: `${userEmail} listed ${listing.make} ${listing.model} ${listing.year}`,
-                timestamp: timeAgo,
-                color: listing.status === 'approved' ? 'bg-green-500' : 'bg-yellow-500'
-              };
-            });
-            
-            setRecentActivity(activityItems);
-          }
-        } else {
-          setRecentActivity([]);
+        {
+          title: "Active Listings",
+          value: activeListingsCount.toString(),
+          icon: <ListChecks className="h-7 w-7 text-green-600 bg-green-100 rounded-full p-1" />, 
+          trend: `${Math.floor(activeListingsCount/5)} new today`
         }
-      } catch (activityError) {
-        console.error('Error processing activity data:', activityError);
-        setRecentActivity([]);
+      ]);
+      // Fetch recent activity: new users, new listings, verifications
+      const [recentListings, recentUsers, pendingListings] = await Promise.all([
+        supabase.from('listings').select('id, make, model, year, status, created_at, user_id').order('created_at', { ascending: false }).limit(5),
+        supabase.from('profiles').select('id, full_name, email, created_at').order('created_at', { ascending: false }).limit(3),
+        supabase.from('listings').select('id, make, model, year, created_at, user_id').eq('status', 'pending_verification').order('created_at', { ascending: false }).limit(3)
+      ]);
+      let activityItems = [];
+      // New listings
+      if (recentListings.data) {
+        for (const listing of recentListings.data) {
+          activityItems.push({
+            id: `listing-${listing.id}`,
+            type: listing.status === 'approved' ? 'listing_approved' : (listing.status === 'pending_verification' ? 'listing_pending' : 'listing_other'),
+            message: `New listing: ${listing.make} ${listing.model} ${listing.year}`,
+            timestamp: new Date(listing.created_at).toLocaleString(),
+            color: listing.status === 'approved' ? 'bg-green-500' : (listing.status === 'pending_verification' ? 'bg-yellow-500' : 'bg-gray-400'),
+            icon: listing.status === 'approved' ? <ListChecks className="h-5 w-5 text-white" /> : <FileWarning className="h-5 w-5 text-white" />
+          });
+        }
       }
+      // New users
+      if (recentUsers.data) {
+        for (const user of recentUsers.data) {
+          activityItems.push({
+            id: `user-${user.id}`,
+            type: 'user_signup',
+            message: `New user: ${user.full_name || user.email}`,
+            timestamp: new Date(user.created_at).toLocaleString(),
+            color: 'bg-blue-500',
+            icon: <Users className="h-5 w-5 text-white" />
+          });
+        }
+      }
+      // Pending verifications
+      if (pendingListings.data) {
+        for (const listing of pendingListings.data) {
+          activityItems.push({
+            id: `pending-${listing.id}`,
+            type: 'pending_verification',
+            message: `Pending verification: ${listing.make} ${listing.model} ${listing.year}`,
+            timestamp: new Date(listing.created_at).toLocaleString(),
+            color: 'bg-yellow-500',
+            icon: <FileWarning className="h-5 w-5 text-white" />
+          });
+        }
+      }
+      // Sort by timestamp desc
+      activityItems = activityItems.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      setRecentActivity(activityItems);
       setIsLoading(false);
-      
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load dashboard data. Please try again.",
-        variant: "destructive"
-      });
       setIsLoading(false);
+      toast({ title: "Error", description: "Failed to load dashboard data. Please try again.", variant: "destructive" });
     }
   };
   
@@ -235,20 +170,19 @@ const AdminDashboardPage = () => {
       </motion.h1>
 
       <motion.div 
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6"
         variants={staggerContainer}
         initial="hidden"
         animate="visible"
       >
         {stats.map((stat, index) => (
           <motion.div key={index} variants={fadeIn}>
-            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 border-l-4 border-primary">
+            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300 border-l-4 border-primary bg-gradient-to-br from-white via-gray-50 to-blue-50 h-full flex flex-col justify-center">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-                {stat.icon}
+                <CardTitle className="text-base font-semibold text-primary flex items-center gap-2">{stat.icon}{stat.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-foreground">{stat.value}</div>
+                <div className="text-4xl font-extrabold text-foreground mb-1">{stat.value}</div>
                 <p className="text-xs text-muted-foreground pt-1">{stat.trend}</p>
               </CardContent>
             </Card>
@@ -263,7 +197,7 @@ const AdminDashboardPage = () => {
               <CardTitle className="text-xl flex items-center">
                 <Activity className="mr-2 h-5 w-5 text-primary" /> Recent Activity
               </CardTitle>
-              <CardDescription>Overview of recent platform activities.</CardDescription>
+              <CardDescription>Live platform timeline & highlights.</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -271,17 +205,25 @@ const AdminDashboardPage = () => {
                   <RefreshCw className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : recentActivity.length > 0 ? (
-                <ul className="space-y-3 text-sm">
-                  {recentActivity.map((activity) => (
-                    <li key={activity.id} className="flex items-center">
-                      <span className={`${activity.color} w-2 h-2 rounded-full mr-2`}></span>
-                      <div>
-                        <p>{activity.message}</p>
-                        <p className="text-xs text-muted-foreground">{activity.timestamp}</p>
+                <div className="relative pl-6 before:absolute before:left-2 before:top-0 before:bottom-0 before:w-1 before:bg-gradient-to-b before:from-primary/30 before:to-accent/30 before:rounded-full">
+                  {recentActivity.map((activity, idx) => (
+                    <div key={activity.id} className="mb-8 flex items-start relative group">
+                      <div className={`absolute left-[-30px] top-0 flex items-center justify-center w-10 h-10 rounded-full shadow-lg border-4 ${activity.color} border-white z-10 bg-background group-hover:scale-110 transition-transform`}>
+                        {activity.icon}
                       </div>
-                    </li>
+                      <div className="ml-4 flex-1 bg-muted/40 rounded-xl p-4 shadow-md border-l-4 border-primary/60 hover:bg-accent/10 transition-colors">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-primary text-base">{activity.message}</span>
+                          <span className="ml-auto text-xs text-muted-foreground">{activity.timestamp}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className={`inline-block w-2 h-2 rounded-full ${activity.color}`}></span>
+                          <span className="text-xs text-muted-foreground">{activity.type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </ul>
+                </div>
               ) : (
                 <p className="text-center text-muted-foreground py-4">No recent activity found</p>
               )}

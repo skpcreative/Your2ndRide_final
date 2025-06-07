@@ -22,13 +22,12 @@ const ProfilePage = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [formData, setFormData] = useState({
     full_name: '',
-    phone: '',
-    bio: '',
-    location: '',
-    website: ''
+    phone_number: '',
+    location: ''
   });
   const [userListings, setUserListings] = useState([]);
   const [wishlistItems, setWishlistItems] = useState([]);
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, listingId: null });
   
   // Fetch user profile data
   useEffect(() => {
@@ -64,23 +63,45 @@ const ProfilePage = () => {
         // Initialize form data
         setFormData({
           full_name: profile.full_name || user.name || '',
-          phone: profile.phone || '',
-          bio: profile.bio || '',
-          location: profile.location || '',
-          website: profile.website || ''
+          phone_number: profile.phone_number || '',
+          location: profile.location || ''
         });
         
         // Initial fetch for listings
         const { data: listingsData, error: listingsError } = await supabase
           .from('listings')
-          .select('id, name, price, main_image, created_at, status')
+          .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
-          
+        
         if (listingsError) {
           console.error('Error fetching listings:', listingsError);
         } else {
-          setUserListings(listingsData || []);
+          // Process images for each listing
+          const processedListings = (listingsData || []).map(listing => {
+            let image = '/placeholder-car.jpg';
+            if (listing.photo_urls && Array.isArray(listing.photo_urls) && listing.photo_urls.length > 0) {
+              const firstPhoto = listing.photo_urls[0];
+              if (typeof firstPhoto === 'string' && firstPhoto.trim() !== '') {
+                if (firstPhoto.startsWith('http')) {
+                  image = firstPhoto;
+                } else {
+                  try {
+                    const cleanPath = firstPhoto.startsWith('/') ? firstPhoto.substring(1) : firstPhoto;
+                    image = supabase.storage.from('vehicle-assets').getPublicUrl(cleanPath).data.publicUrl || image;
+                  } catch (err) {
+                    // fallback remains
+                  }
+                }
+              }
+            }
+            return {
+              ...listing,
+              image,
+              name: `${listing.make || ''} ${listing.model || ''} ${listing.year || ''}`.trim() || listing.name || 'Unnamed Vehicle',
+            };
+          });
+          setUserListings(processedListings);
         }
         
         // Initial fetch for wishlist
@@ -184,26 +205,20 @@ const ProfilePage = () => {
   const handleSaveProfile = async () => {
     try {
       setLoading(true);
-      
-      // Check if profile exists first
       const { data: existingProfile } = await supabase
         .from('profiles')
         .select('id')
         .eq('id', user.id)
         .single();
-      
       let error;
-      
       if (existingProfile) {
         // Update existing profile
         const { error: updateError } = await supabase
           .from('profiles')
           .update({
             full_name: formData.full_name,
-            phone: formData.phone,
-            bio: formData.bio,
+            phone_number: formData.phone_number,
             location: formData.location,
-            website: formData.website,
             updated_at: new Date().toISOString()
           })
           .eq('id', user.id);
@@ -216,10 +231,8 @@ const ProfilePage = () => {
           .insert({
             id: user.id,
             full_name: formData.full_name,
-            phone: formData.phone,
-            bio: formData.bio,
+            phone_number: formData.phone_number,
             location: formData.location,
-            website: formData.website,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           });
@@ -233,17 +246,15 @@ const ProfilePage = () => {
       
       // Update user metadata
       await supabase.auth.updateUser({
-        data: { full_name: formData.full_name }
+        data: { full_name: formData.full_name, phone_number: formData.phone_number }
       });
       
       // Update local state to reflect changes
       setUserProfile({
         ...userProfile,
         full_name: formData.full_name,
-        phone: formData.phone,
-        bio: formData.bio,
+        phone_number: formData.phone_number,
         location: formData.location,
-        website: formData.website,
         updated_at: new Date().toISOString()
       });
       
@@ -272,10 +283,8 @@ const ProfilePage = () => {
     if (userProfile) {
       setFormData({
         full_name: userProfile.full_name || user?.name || '',
-        phone: userProfile.phone || '',
-        bio: userProfile.bio || '',
-        location: userProfile.location || '',
-        website: userProfile.website || ''
+        phone_number: userProfile.phone_number || '',
+        location: userProfile.location || ''
       });
     }
     setEditMode(false);
@@ -399,18 +408,18 @@ const ProfilePage = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
+                    <Label htmlFor="phone_number">Phone Number</Label>
                     {editMode ? (
                       <Input
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
+                        id="phone_number"
+                        name="phone_number"
+                        value={formData.phone_number}
                         onChange={handleInputChange}
                         placeholder="Your phone number"
                       />
                     ) : (
                       <div className="p-2 border rounded-md bg-muted/50">
-                        {formData.phone || 'Not provided'}
+                        {formData.phone_number || 'Not provided'}
                       </div>
                     )}
                   </div>
@@ -428,52 +437,6 @@ const ProfilePage = () => {
                     ) : (
                       <div className="p-2 border rounded-md bg-muted/50">
                         {formData.location || 'Not provided'}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="website">Website</Label>
-                    {editMode ? (
-                      <Input
-                        id="website"
-                        name="website"
-                        value={formData.website}
-                        onChange={handleInputChange}
-                        placeholder="Your website URL"
-                      />
-                    ) : (
-                      <div className="p-2 border rounded-md bg-muted/50">
-                        {formData.website ? (
-                          <a 
-                            href={formData.website.startsWith('http') ? formData.website : `https://${formData.website}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline"
-                          >
-                            {formData.website}
-                          </a>
-                        ) : (
-                          'Not provided'
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    {editMode ? (
-                      <Textarea
-                        id="bio"
-                        name="bio"
-                        value={formData.bio}
-                        onChange={handleInputChange}
-                        placeholder="Tell us about yourself"
-                        rows={4}
-                      />
-                    ) : (
-                      <div className="p-2 border rounded-md bg-muted/50 min-h-[100px]">
-                        {formData.bio || 'No bio provided'}
                       </div>
                     )}
                   </div>
@@ -515,7 +478,7 @@ const ProfilePage = () => {
                     <Card key={listing.id} className="overflow-hidden">
                       <div className="aspect-video relative">
                         <img 
-                          src={listing.main_image || '/placeholder-car.jpg'} 
+                          src={listing.image || '/placeholder-car.jpg'} 
                           alt={listing.name}
                           className="object-cover w-full h-full"
                           onError={(e) => {
@@ -523,9 +486,11 @@ const ProfilePage = () => {
                             e.target.src = '/placeholder-car.jpg';
                           }}
                         />
-                        <div className="absolute top-2 right-2 px-2 py-1 text-xs font-medium rounded bg-primary text-white">
-                          {listing.status === 'active' ? 'Active' : 'Inactive'}
-                        </div>
+                        {listing.status === 'sold' && (
+                          <div className="absolute top-2 right-2 px-2 py-1 text-xs font-medium rounded bg-gray-700 text-white">
+                            Sold
+                          </div>
+                        )}
                       </div>
                       <CardContent className="p-4">
                         <h3 className="font-medium truncate">{listing.name}</h3>
@@ -552,6 +517,35 @@ const ProfilePage = () => {
                           onClick={() => navigate(`/edit-listing/${listing.id}`)}
                         >
                           Edit
+                        </Button>
+                        {listing.status !== 'sold' && (
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={async () => {
+                              const { error } = await supabase
+                                .from('listings')
+                                .update({ status: 'sold' })
+                                .eq('id', listing.id);
+                              if (!error) {
+                                setUserListings(prev => prev.map(l => l.id === listing.id ? { ...l, status: 'sold' } : l));
+                                toast({ title: 'Marked as Sold', description: 'This listing is now marked as sold and will not be shown to buyers.' });
+                              } else {
+                                toast({ title: 'Error', description: 'Failed to mark as sold.', variant: 'destructive' });
+                              }
+                            }}
+                          >
+                            Mark as Sold
+                          </Button>
+                        )}
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="flex-1"
+                          onClick={() => setDeleteDialog({ open: true, listingId: listing.id })}
+                        >
+                          Delete
                         </Button>
                       </CardFooter>
                     </Card>
@@ -620,6 +614,37 @@ const ProfilePage = () => {
           </Card>
         </TabsContent>
       </Tabs>
+      
+      {/* Delete Confirmation Dialog */}
+      {deleteDialog.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full">
+            <h2 className="text-lg font-bold mb-2 text-destructive">Delete Listing?</h2>
+            <p className="mb-4 text-muted-foreground">Are you sure you want to delete this listing? This action cannot be undone.</p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setDeleteDialog({ open: false, listingId: null })}>Cancel</Button>
+              <Button 
+                variant="destructive" 
+                onClick={async () => {
+                  const { error } = await supabase
+                    .from('listings')
+                    .delete()
+                    .eq('id', deleteDialog.listingId);
+                  if (!error) {
+                    setUserListings(prev => prev.filter(l => l.id !== deleteDialog.listingId));
+                    toast({ title: 'Listing Deleted', description: 'This listing has been deleted.' });
+                  } else {
+                    toast({ title: 'Error', description: 'Failed to delete listing.', variant: 'destructive' });
+                  }
+                  setDeleteDialog({ open: false, listingId: null });
+                }}
+              >
+                Yes, Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

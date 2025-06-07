@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { useSiteSettings } from '@/contexts/SiteSettingsContext';
+import { supabase } from '@/lib/supabaseClient';
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -17,6 +18,8 @@ const HomePage = () => {
     make: '',
     model: ''
   });
+  const [featuredListings, setFeaturedListings] = useState([]);
+  const [recentListings, setRecentListings] = useState([]);
   
   useEffect(() => {
     // Check if user is authenticated
@@ -31,6 +34,61 @@ const HomePage = () => {
     
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+  
+  useEffect(() => {
+    // Fetch featured listings from Supabase
+    const fetchFeatured = async () => {
+      const { data, error } = await supabase
+        .from('listings')
+        .select('*')
+        .eq('featured', true)
+        .or('status.eq.approved,status.eq.active')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (!error && data) {
+        setFeaturedListings(data.map(listing => ({
+          id: listing.id,
+          name: `${listing.make || ''} ${listing.model || ''} ${listing.year || ''}`.trim() || 'Unnamed Vehicle',
+          price: listing.price ? `$${listing.price.toLocaleString()}` : 'Contact for price',
+          image: (listing.photo_urls && listing.photo_urls.length > 0 && typeof listing.photo_urls[0] === 'string') ? (listing.photo_urls[0].startsWith('http') ? listing.photo_urls[0] : supabase.storage.from('vehicle-assets').getPublicUrl(listing.photo_urls[0].replace(/^\//, '')).data.publicUrl) : 'https://images.unsplash.com/photo-1595872018818-97555653a011',
+          make: listing.make || '',
+        })));
+      }
+    };
+    fetchFeatured();
+  }, []);
+  
+  useEffect(() => {
+    // Fetch recent listings
+    const fetchRecent = async () => {
+      const { data, error } = await supabase
+        .from('listings')
+        .select('*')
+        .or('status.eq.approved,status.eq.active')
+        .order('created_at', { ascending: false })
+        .limit(4);
+      if (!error && data) {
+        setRecentListings(data.map(listing => ({
+          id: listing.id,
+          name: `${listing.make || ''} ${listing.model || ''} ${listing.year || ''}`.trim() || 'Unnamed Vehicle',
+          price: listing.price ? `$${listing.price.toLocaleString()}` : 'Contact for price',
+          image: (listing.photo_urls && listing.photo_urls.length > 0 && typeof listing.photo_urls[0] === 'string') ? (listing.photo_urls[0].startsWith('http') ? listing.photo_urls[0] : supabase.storage.from('vehicle-assets').getPublicUrl(listing.photo_urls[0].replace(/^\//, '')).data.publicUrl) : 'https://images.unsplash.com/photo-1595872018818-97555653a011',
+          date: listing.created_at ? new Date(listing.created_at).toLocaleString() : 'Just now',
+        })));
+      }
+    };
+    fetchRecent();
+    // Realtime subscription
+    const channel = supabase
+      .channel('recent-listings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'listings' }, (payload) => {
+        fetchRecent();
+      })
+      .subscribe();
+    return () => {
+      channel.unsubscribe();
+    };
   }, []);
   
   const handleSellClick = (e) => {
@@ -59,17 +117,6 @@ const HomePage = () => {
       [name]: value
     }));
   };
-
-  const featuredListings = [
-    { id: 1, name: 'Sedan X', price: '$15,000', image: 'Modern blue sedan', make: 'Alpha Motors' },
-    { id: 2, name: 'SUV Max', price: '$25,000', image: 'Spacious family SUV in silver', make: 'Beta Autos' },
-    { id: 3, name: 'Sport Coupe', price: '$30,000', image: 'Red sports coupe with black wheels', make: 'Gamma Cars' },
-  ];
-
-  const recentListings = [
-    { id: 4, name: 'Eco Hatch', price: '$12,000', image: 'Compact green hatchback', date: '2 hours ago' },
-    { id: 5, name: 'Pickup Pro', price: '$28,000', image: 'Heavy-duty pickup truck, black', date: '5 hours ago' },
-  ];
 
   const popularBrands = ['Alpha Motors', 'Beta Autos', 'Gamma Cars', 'Delta Drives', 'Epsilon EV'];
   const categories = ['Sedan', 'SUV', 'Truck', 'Coupe', 'Hatchback', 'EV'];
@@ -186,24 +233,29 @@ const HomePage = () => {
       <motion.section className="container mx-auto px-4 sm:px-6 lg:px-8" variants={staggerContainer} initial="hidden" animate="visible">
         <h2 className="text-3xl font-bold mb-8 text-center text-primary">Featured Listings</h2>
         <div className="relative overflow-hidden">
-          <div className="flex space-x-6 overflow-x-auto scrollbar-hide snap-x snap-mandatory py-4" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {featuredListings.map((listing) => (
-              <motion.div key={listing.id} variants={fadeIn}>
-                <Card className="overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300 group">
-                  <div className="relative h-56 bg-gray-200">
-                    <img  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" alt={listing.image} src="https://images.unsplash.com/photo-1595872018818-97555653a011" />
-                    <div className="absolute top-2 left-2 bg-accent text-accent-foreground px-2 py-1 text-xs font-semibold rounded">{listing.make}</div>
-                  </div>
-                  <CardContent className="p-6">
-                    <CardTitle className="text-xl font-semibold mb-1 group-hover:text-primary transition-colors">{listing.name}</CardTitle>
-                    <p className="text-2xl font-bold text-primary mb-3">{listing.price}</p>
-                    <Button asChild className="w-full mt-2">
-                      <Link to={`/vehicle/${listing.id}`}>View Details</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+          <div className="flex space-x-4 sm:space-x-6 overflow-x-auto no-scrollbar snap-x snap-mandatory py-4 px-1 -mx-1"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {featuredListings.length === 0 ? (
+              <div className="text-muted-foreground text-center w-full py-8">No featured vehicles at the moment.</div>
+            ) : (
+              featuredListings.map((listing) => (
+                <motion.div key={listing.id} variants={fadeIn} className="snap-start flex-shrink-0">
+                  <Card className="overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300 group w-64 sm:w-72 md:w-80">
+                    <div className="relative h-40 sm:h-48 md:h-56 bg-gray-200">
+                      <img className="max-h-full max-w-full object-contain rounded-lg bg-white" alt={listing.name} src={listing.image} style={{ width: '100%', height: '100%' }} />
+                      <div className="absolute top-2 left-2 bg-accent text-accent-foreground px-2 py-1 text-xs font-semibold rounded">{listing.make}</div>
+                    </div>
+                    <CardContent className="p-4 sm:p-6">
+                      <CardTitle className="text-lg sm:text-xl font-semibold mb-1 group-hover:text-primary transition-colors">{listing.name}</CardTitle>
+                      <p className="text-xl sm:text-2xl font-bold text-primary mb-3">{listing.price}</p>
+                      <Button asChild className="w-full mt-2">
+                        <Link to={`/vehicle/${listing.id}`}>View Details</Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))
+            )}
           </div>
         </div>
         <div className="text-center mt-12">
@@ -215,74 +267,38 @@ const HomePage = () => {
         </div>
       </motion.section>
       
-      <motion.section className="bg-muted py-16" variants={fadeIn} initial="hidden" animate="visible">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold mb-12 text-center text-primary">How Your2ndRide Works</h2>
-          <motion.div 
-            className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-          >
-            {[
-              { icon: <Search size={48} className="mx-auto mb-4 text-accent" />, title: 'Find Your Ride', description: 'Browse thousands of listings with powerful filters.' },
-              { icon: <MessageSquare size={48} className="mx-auto mb-4 text-accent" />, title: 'Connect Securely', description: 'Chat with sellers directly and safely through our platform.' },
-              { icon: <ShieldCheck size={48} className="mx-auto mb-4 text-accent" />, title: 'Transact with Confidence', description: 'Verified sellers and transparent processes for peace of mind.' },
-            ].map((step, index) => (
-              <motion.div key={index} variants={fadeIn} className="p-6 bg-background rounded-lg shadow-lg">
-                {step.icon}
-                <h3 className="text-xl font-semibold mb-2 text-foreground">{step.title}</h3>
-                <p className="text-muted-foreground">{step.description}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </motion.section>
-
       <motion.section className="container mx-auto px-4 sm:px-6 lg:px-8 bg-accent/5 py-12 rounded-lg" variants={fadeIn} initial="hidden" animate="visible">
         <h2 className="text-3xl font-bold mb-8 text-center text-primary">Recently Added</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          {recentListings.map((listing) => (
-            <motion.div key={listing.id} variants={fadeIn}>
-              <Card className="flex flex-col md:flex-row items-center shadow-md hover:shadow-xl transition-shadow duration-300">
-                <div className="md:w-1/3 h-48 md:h-auto bg-gray-200 rounded-t-lg md:rounded-l-lg md:rounded-tr-none overflow-hidden">
-                  <img  className="w-full h-full object-cover" alt={listing.image} src="https://images.unsplash.com/photo-1595872018818-97555653a011" />
-                </div>
-                <CardContent className="p-6 md:w-2/3">
-                  <CardTitle className="text-xl font-semibold mb-1 hover:text-primary transition-colors">{listing.name}</CardTitle>
-                  <p className="text-lg font-bold text-primary mb-2">{listing.price}</p>
-                  <p className="text-sm text-muted-foreground mb-3">Listed: {listing.date}</p>
-                  <Button asChild>
-                    <Link to={`/vehicle/${listing.id}`}>View Details</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      </motion.section>
-
-      <motion.section className="container mx-auto px-4 sm:px-6 lg:px-8" variants={fadeIn} initial="hidden" animate="visible">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <div>
-            <h3 className="text-2xl font-semibold mb-6 text-center md:text-left text-primary">Popular Brands</h3>
-            <motion.div className="flex flex-wrap gap-3 justify-center md:justify-start" variants={staggerContainer}>
-              {popularBrands.map(brand => (
-                <motion.div key={brand} variants={fadeIn}>
-                  <Button variant="outline" className="bg-background hover:bg-accent/10 hover:border-accent transition-all duration-300">{brand}</Button>
+        <div className="relative overflow-hidden">
+          <div className="flex space-x-4 sm:space-x-6 overflow-x-auto no-scrollbar snap-x snap-mandatory py-4 px-1 -mx-1"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {recentListings.length === 0 ? (
+              <div className="text-muted-foreground text-center w-full py-8">No recent vehicles yet.</div>
+            ) : (
+              recentListings.map((listing) => (
+                <motion.div key={listing.id} variants={fadeIn} className="snap-start flex-shrink-0">
+                  <Card className="overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300 group w-64 sm:w-72 md:w-80">
+                    <div className="relative h-40 sm:h-48 md:h-56 bg-gray-200 flex items-center justify-center">
+                      <img 
+                        className="max-h-full max-w-full object-contain rounded-lg bg-white"
+                        alt={listing.name} 
+                        src={listing.image} 
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                      <div className="absolute top-2 left-2 bg-accent text-accent-foreground px-2 py-1 text-xs font-semibold rounded">{listing.name.split(' ')[0]}</div>
+                    </div>
+                    <CardContent className="p-4 sm:p-6">
+                      <CardTitle className="text-lg sm:text-xl font-semibold mb-1 group-hover:text-primary transition-colors">{listing.name}</CardTitle>
+                      <p className="text-xl sm:text-2xl font-bold text-primary mb-3">{listing.price}</p>
+                      <p className="text-xs text-muted-foreground mb-2">Listed: {listing.date}</p>
+                      <Button asChild className="w-full mt-2">
+                        <Link to={`/vehicle/${listing.id}`}>View Details</Link>
+                      </Button>
+                    </CardContent>
+                  </Card>
                 </motion.div>
-              ))}
-            </motion.div>
-          </div>
-          <div>
-            <h3 className="text-2xl font-semibold mb-6 text-center md:text-left text-primary">Vehicle Categories</h3>
-            <motion.div className="flex flex-wrap gap-3 justify-center md:justify-start" variants={staggerContainer}>
-              {categories.map(category => (
-                <motion.div key={category} variants={fadeIn}>
-                  <Button variant="secondary" className="hover:bg-secondary/80 transition-all duration-300">{category}</Button>
-                </motion.div>
-              ))}
-            </motion.div>
+              ))
+            )}
           </div>
         </div>
       </motion.section>
@@ -322,3 +338,13 @@ const HomePage = () => {
 };
 
 export default HomePage;
+
+/* Add this to your global CSS (e.g., index.css or tailwind.css) if not present:
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+*/

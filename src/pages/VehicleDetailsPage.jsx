@@ -480,22 +480,51 @@ const VehicleDetailsPage = () => {
       // Remove non-digit characters
       const formattedPhone = vehicle.contact_phone.replace(/\D/g, '');
       // WhatsApp requires country code, so if not present, you may want to prepend your default country code (e.g., '91' for India)
-      const phoneWithCountryCode = formattedPhone.length >= 10 && formattedPhone.startsWith('91')
-        ? formattedPhone
-        : `91${formattedPhone.replace(/^0+/, '')}`; // Default to India if not present
+      const phoneWithCountryCode = formattedPhone.startsWith('0') || formattedPhone.length < 10
+        ? `91${formattedPhone.replace(/^0+/, '')}` // Default to India if not present
+        : formattedPhone;
       const message = encodeURIComponent(`Hi, I'm interested in your ${vehicle?.name || 'vehicle'} listed on Your2ndRide.`);
       options.push({
         type: 'whatsapp',
         label: 'Chat on WhatsApp',
-        icon: <MessageSquare className="h-5 w-5" />, // Use lucide-react icon for consistency
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+        ),
         url: `https://wa.me/${phoneWithCountryCode}?text=${message}`,
         color: 'bg-green-600 hover:bg-green-700'
       });
     }
-
+    
+    // Message text
+    const message = encodeURIComponent(`Hi, I'm interested in your ${vehicle?.name || 'vehicle'} listed on Your2ndRide.`);
+    
+    // Add WhatsApp option if phone is available
+    if (sellerInfo?.phone) {
+      // Format phone number by removing any non-digit characters
+      const formattedPhone = sellerInfo.phone.replace(/\D/g, '');
+      
+      // Make sure the phone number starts with a country code (default to +1 if none)
+      const phoneWithCountryCode = formattedPhone.startsWith('+') 
+        ? formattedPhone 
+        : (formattedPhone.startsWith('1') ? `+${formattedPhone}` : `+1${formattedPhone}`);
+      
+      options.push({
+        type: 'whatsapp',
+        label: 'WhatsApp',
+        icon: (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+          </svg>
+        ),
+        url: `https://wa.me/${phoneWithCountryCode}?text=${message}`,
+        color: 'bg-green-600 hover:bg-green-700'
+      });
+    }
+    
     // Add Email option if email is available
     if (sellerInfo?.email) {
-      const message = encodeURIComponent(`Hi, I'm interested in your ${vehicle?.name || 'vehicle'} listed on Your2ndRide.`);
       options.push({
         type: 'email',
         label: 'Email',
@@ -504,7 +533,8 @@ const VehicleDetailsPage = () => {
         color: 'bg-blue-600 hover:bg-blue-700'
       });
     }
-    // Add SMS and Call options if phone is available in sellerInfo
+    
+    // Add SMS option if phone is available
     if (sellerInfo?.phone) {
       const formattedPhone = sellerInfo.phone.replace(/\D/g, '');
       options.push({
@@ -514,6 +544,11 @@ const VehicleDetailsPage = () => {
         url: `sms:${formattedPhone}?body=${encodeURIComponent(`Hi, I'm interested in your ${vehicle?.name || 'vehicle'} listed on Your2ndRide.`)}`,
         color: 'bg-purple-600 hover:bg-purple-700'
       });
+    }
+    
+    // Add phone call option if phone is available
+    if (sellerInfo?.phone) {
+      const formattedPhone = sellerInfo.phone.replace(/\D/g, '');
       options.push({
         type: 'call',
         label: 'Call Seller',
@@ -522,6 +557,9 @@ const VehicleDetailsPage = () => {
         color: 'bg-primary hover:bg-primary/90'
       });
     }
+    
+    // We already added the chat option at the beginning, so no fallback needed
+    
     return options;
   };
   
@@ -731,12 +769,12 @@ const VehicleDetailsPage = () => {
                   transition={{ duration: 0.3 }}
                 >
                   {vehicle.galleryImages && vehicle.galleryImages.length > 0 ? (
+                    // Main image
                     <img    
-                      className="w-full h-full object-cover" 
+                      className="max-h-full max-w-full object-contain p-2 bg-white"
                       alt={`${vehicle.name} - Image ${selectedImageIndex + 1}`} 
                       src={vehicle.galleryImages[selectedImageIndex]}
                       onError={(e) => {
-                        console.log('Image failed to load, using fallback');
                         e.target.onerror = null;
                         e.target.src = getFallbackImage(vehicle.make, vehicle.model);
                       }}
@@ -759,7 +797,7 @@ const VehicleDetailsPage = () => {
                         className={`flex-shrink-0 w-20 h-20 rounded-md overflow-hidden border-2 transition-all ${selectedImageIndex === index ? 'border-primary ring-2 ring-primary' : 'border-transparent hover:border-primary/50'}`}
                       >
                         <img 
-                          className="w-full h-full object-cover" 
+                          className="w-full h-full object-contain p-1 bg-white" 
                           alt={`${vehicle.name} thumbnail ${index + 1}`} 
                           src={imgUrl}
                           onError={(e) => {
@@ -771,176 +809,8 @@ const VehicleDetailsPage = () => {
                     ))}
                   </div>
                 )}
-                
-                {/* Tabs for vehicle details */}
-                <div className="mt-8">
-                  <Tabs defaultValue="details" value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="details">Details</TabsTrigger>
-                      <TabsTrigger value="features">Features</TabsTrigger>
-                      <TabsTrigger value="seller">Seller</TabsTrigger>
-                    </TabsList>
-                    
-                    {/* Details Tab */}
-                    <TabsContent value="details" className="p-4 bg-background rounded-md mt-2">
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <h3 className="text-lg font-semibold mb-3 flex items-center">
-                              <Car className="mr-2 h-5 w-5 text-primary" /> Vehicle Information
-                            </h3>
-                            <div className="grid grid-cols-2 gap-y-3 text-sm">
-                              <div className="font-medium">Make:</div>
-                              <div>{vehicle.make || 'N/A'}</div>
-                              <div className="font-medium">Model:</div>
-                              <div>{vehicle.model || 'N/A'}</div>
-                              <div className="font-medium">Year:</div>
-                              <div>{vehicle.year || 'N/A'}</div>
-                              <div className="font-medium">Mileage:</div>
-                              <div>{vehicle.formattedMileage}</div>
-                              <div className="font-medium">Body Type:</div>
-                              <div>{vehicle.body_type || 'N/A'}</div>
-                              <div className="font-medium">Exterior Color:</div>
-                              <div>{vehicle.exterior_color || 'N/A'}</div>
-                            </div>
-                          </div>
-                          
-                          <div>
-                            <h3 className="text-lg font-semibold mb-3 flex items-center">
-                              <Fuel className="mr-2 h-5 w-5 text-primary" /> Performance
-                            </h3>
-                            <div className="grid grid-cols-2 gap-y-3 text-sm">
-                              <div className="font-medium">Fuel Type:</div>
-                              <div>{vehicle.fuel_type || 'N/A'}</div>
-                              <div className="font-medium">Transmission:</div>
-                              <div>{vehicle.transmission || 'N/A'}</div>
-                              <div className="font-medium">Drive Type:</div>
-                              <div>{vehicle.drive_type || 'N/A'}</div>
-                              <div className="font-medium">Engine:</div>
-                              <div>{vehicle.engine || 'N/A'}</div>
-                              <div className="font-medium">Horsepower:</div>
-                              <div>{vehicle.horsepower ? `${vehicle.horsepower} hp` : 'N/A'}</div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-lg font-semibold mb-3 flex items-center">
-                            <MapPin className="mr-2 h-5 w-5 text-primary" /> Location
-                          </h3>
-                          <p className="text-sm">{vehicle.location || vehicle.zip_code || 'Location not specified'}</p>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-lg font-semibold mb-3 flex items-center">
-                            <Clock className="mr-2 h-5 w-5 text-primary" /> Listing Details
-                          </h3>
-                          <div className="grid grid-cols-2 gap-y-3 text-sm">
-                            <div className="font-medium">Listed On:</div>
-                            <div>{vehicle.formattedDate}</div>
-                            <div className="font-medium">Status:</div>
-                            <div>
-                              <Badge className={vehicle.status === 'approved' ? 'bg-green-600' : 'bg-blue-600'}>
-                                {vehicle.status === 'approved' ? 'New Listing' : 'Active'}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </TabsContent>
-                    
-                    {/* Features Tab */}
-                    <TabsContent value="features" className="p-4 bg-background rounded-md mt-2">
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-semibold mb-3 flex items-center">
-                          <Star className="mr-2 h-5 w-5 text-primary" /> Features & Amenities
-                        </h3>
-                        
-                        {vehicle.features && vehicle.features.length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            {vehicle.features.map((feature, index) => (
-                              <div key={index} className="flex items-center p-2 bg-muted/30 rounded-md">
-                                <div className="h-2 w-2 rounded-full bg-primary mr-2"></div>
-                                <span className="text-sm">{feature}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-muted-foreground text-sm">No specific features listed for this vehicle.</p>
-                        )}
-                        
-                        <div className="mt-6">
-                          <h3 className="text-lg font-semibold mb-3 flex items-center">
-                            <Shield className="mr-2 h-5 w-5 text-primary" /> Vehicle History
-                          </h3>
-                          <p className="text-sm text-muted-foreground">
-                            {vehicle.history || 'No vehicle history information provided.'}
-                          </p>
-                        </div>
-                      </div>
-                    </TabsContent>
-                    
-                    {/* Seller Tab */}
-                    <TabsContent value="seller" className="p-4 bg-background rounded-md mt-2">
-                      {sellerInfo ? (
-                        <div className="space-y-4">
-                          <div className="flex items-center space-x-4">
-                            {sellerInfo.avatar ? (
-                              <img 
-                                src={sellerInfo.avatar} 
-                                alt={sellerInfo.name} 
-                                className="h-16 w-16 rounded-full object-cover border-2 border-primary"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(sellerInfo.name);
-                                }}
-                              />
-                            ) : (
-                              <UserCircle className="h-16 w-16 text-primary" />
-                            )}
-                            <div>
-                              <h3 className="text-lg font-semibold">{sellerInfo.name}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                Member since {new Date(sellerInfo.memberSince).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                            {sellerInfo.phone && (
-                              <div className="p-3 bg-muted/30 rounded-md">
-                                <p className="text-xs text-muted-foreground mb-1">Phone</p>
-                                <p className="font-medium">{sellerInfo.phone}</p>
-                              </div>
-                            )}
-                            {sellerInfo.email && (
-                              <div className="p-3 bg-muted/30 rounded-md">
-                                <p className="text-xs text-muted-foreground mb-1">Email</p>
-                                <p className="font-medium">{sellerInfo.email}</p>
-                              </div>
-                            )}
-                          </div>
-                          
-                          <div className="mt-6">
-                            <Button size="lg" className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground" asChild>
-                              <Link to={`/chat/${vehicle.user_id}?listingId=${vehicle.id}`}>
-                                <MessageSquare className="mr-2 h-5 w-5" /> Contact Seller
-                              </Link>
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="text-center py-6">
-                          <UserCircle className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                          <p className="text-muted-foreground">Seller information not available</p>
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-                </div>
-              </div>
 
-              {/* Right sidebar with price and actions */}
+{/* Right sidebar with price and actions */}
               <div className="p-6 bg-muted/20 lg:bg-muted/10 border-t lg:border-t-0 lg:border-l border-muted">
                 <div className="space-y-6 sticky top-4">
                   {/* Price section */}
@@ -1055,69 +925,88 @@ const VehicleDetailsPage = () => {
                   </div>
                 </div>
               </div>
+                
+                {/* Tabs for vehicle details */}
+                <div className="mt-8">
+                  <Tabs defaultValue="details" value={activeTab} onValueChange={setActiveTab}>
+                    
+                    {/* Details Tab */}
+                    <TabsContent value="details" className="p-4 bg-background rounded-md mt-2">
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <h3 className="text-lg font-semibold mb-3 flex items-center">
+                              <Car className="mr-2 h-5 w-5 text-primary" /> Vehicle Information
+                            </h3>
+                            <div className="grid grid-cols-2 gap-y-3 text-sm">
+                              <div className="font-medium">Make:</div>
+                              <div>{vehicle.make || 'N/A'}</div>
+                              <div className="font-medium">Model:</div>
+                              <div>{vehicle.model || 'N/A'}</div>
+                              <div className="font-medium">Year:</div>
+                              <div>{vehicle.year || 'N/A'}</div>
+                              <div className="font-medium">Mileage:</div>
+                              <div>{vehicle.formattedMileage}</div>
+                              <div className="font-medium">Body Type:</div>
+                              <div>{vehicle.body_type || 'N/A'}</div>
+                              <div className="font-medium">Exterior Color:</div>
+                              <div>{vehicle.exterior_color || 'N/A'}</div>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <h3 className="text-lg font-semibold mb-3 flex items-center">
+                              <Fuel className="mr-2 h-5 w-5 text-primary" /> Performance
+                            </h3>
+                            <div className="grid grid-cols-2 gap-y-3 text-sm">
+                              <div className="font-medium">Fuel Type:</div>
+                              <div>{vehicle.fuel_type || 'N/A'}</div>
+                              <div className="font-medium">Transmission:</div>
+                              <div>{vehicle.transmission || 'N/A'}</div>
+                              <div className="font-medium">Drive Type:</div>
+                              <div>{vehicle.drive_type || 'N/A'}</div>
+                              <div className="font-medium">Engine:</div>
+                              <div>{vehicle.engine || 'N/A'}</div>
+                              <div className="font-medium">Horsepower:</div>
+                              <div>{vehicle.horsepower ? `${vehicle.horsepower} hp` : 'N/A'}</div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <h3 className="text-lg font-semibold mb-3 flex items-center">
+                            <MapPin className="mr-2 h-5 w-5 text-primary" /> Location
+                          </h3>
+                          <p className="text-sm">{vehicle.location || vehicle.zip_code || 'Location not specified'}</p>
+                        </div>
+                        
+                        <div>
+                          <h3 className="text-lg font-semibold mb-3 flex items-center">
+                            <Clock className="mr-2 h-5 w-5 text-primary" /> Listing Details
+                          </h3>
+                          <div className="grid grid-cols-2 gap-y-3 text-sm">
+                            <div className="font-medium">Listed On:</div>
+                            <div>{vehicle.formattedDate}</div>
+                            <div className="font-medium">Status:</div>
+                            <div>
+                              <Badge className={vehicle.status === 'approved' ? 'bg-green-600' : 'bg-blue-600'}>
+                                {vehicle.status === 'approved' ? 'New Listing' : 'Active'}
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              </div>
+
+              
             </div>
           </CardContent>
         </Card>
         
-        {/* Similar Vehicles Section */}
-        {similarVehicles && similarVehicles.length > 0 && (
-          <div className="mt-12 mb-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Similar Vehicles</h2>
-              <Button variant="ghost" asChild>
-                <Link to="/buy">
-                  View All <ChevronRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {similarVehicles.map((item) => (
-                <Card key={item.id} className="overflow-hidden h-full flex flex-col hover:shadow-lg transition-shadow duration-300">
-                  <Link to={`/vehicle/${item.id}`} className="flex-1 flex flex-col">
-                    <div className="relative aspect-video bg-muted">
-                      <img 
-                        src={item.image} 
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = getFallbackImage(item.make, item.model);
-                        }}
-                      />
-                      {item.status === 'approved' && (
-                        <Badge className="absolute top-2 left-2 bg-green-600 text-white hover:bg-green-700">
-                          NEW
-                        </Badge>
-                      )}
-                    </div>
-                    <CardContent className="flex-1 flex flex-col p-4">
-                      <h3 className="font-semibold text-lg mb-1 line-clamp-1">{item.name}</h3>
-                      <p className="text-primary font-bold mb-2">{item.formattedPrice}</p>
-                      <div className="flex flex-wrap gap-2 mt-auto">
-                        {item.year && (
-                          <Badge variant="outline" className="font-normal">
-                            <CalendarDays className="mr-1 h-3 w-3" /> {item.year}
-                          </Badge>
-                        )}
-                        {item.mileage && (
-                          <Badge variant="outline" className="font-normal">
-                            <Gauge className="mr-1 h-3 w-3" /> {item.mileage.toLocaleString()} mi
-                          </Badge>
-                        )}
-                        {item.transmission && (
-                          <Badge variant="outline" className="font-normal">
-                            <Settings className="mr-1 h-3 w-3" /> {item.transmission}
-                          </Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Link>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
+        
       </motion.div>
     </div>
   );

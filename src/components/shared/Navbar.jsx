@@ -204,10 +204,6 @@ const Navbar = () => {
                       <Heart className="mr-2 h-4 w-4" />
                       <span>Wishlist</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/settings')}>
-                      <Settings className="mr-2 h-4 w-4" />
-                      <span>Settings</span>
-                    </DropdownMenuItem>
                     {isAdmin && (
                       <DropdownMenuItem onClick={() => navigate('/admin')}>
                         <Shield className="mr-2 h-4 w-4" />
@@ -281,9 +277,6 @@ const Navbar = () => {
                         {wishlistCount}
                       </span>
                     )}
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start" onClick={() => { navigate('/settings'); setIsMobileMenuOpen(false); }}>
-                    <Settings className="mr-2 h-5 w-5" /> Settings
                   </Button>
                   {isAdmin && (
                     <Button variant="ghost" className="w-full justify-start" onClick={() => { navigate('/admin'); setIsMobileMenuOpen(false); }}>

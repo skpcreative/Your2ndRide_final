@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -21,8 +20,18 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const validateEmail = (email) => /\S+@\S+\.\S+/.test(email);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateEmail(email)) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+    if (!password || password.length < 6) {
+      toast({ title: "Invalid Password", description: "Password must be at least 6 characters.", variant: "destructive" });
+      return;
+    }
     setIsLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({

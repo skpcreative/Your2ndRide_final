@@ -13,6 +13,7 @@ const defaultSettings = {
   hero_text_subheadline: 'Your2ndRide connects buyers and sellers of quality pre-owned vehicles.',
   contact_email: 'support@your2ndride.com',
   contact_phone: '+1 (555) RIDE-NOW',
+  contact_address: '123 Main St, Springfield, USA', // NEW FIELD
   footer_text: `© ${new Date().getFullYear()} Your2ndRide. All rights reserved.`,
   primary_color: '#6D28D9', // Default primary (purple)
   accent_color: '#EC4899', // Default accent (pink)

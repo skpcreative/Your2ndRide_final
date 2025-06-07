@@ -51,12 +51,17 @@ const Footer = () => {
                 </a>
               </li>
               <li className="flex items-center">
-                <span className="mr-2">📞</span> 
-                <a href={`tel:${siteSettings.contact_phone || '+1 (555) 123-4567'}`} className="hover:text-primary transition-colors">
-                  {siteSettings.contact_phone || '+1 (555) 123-4567'}
+                <span className="mr-2">📞</span>
+                <a href={`tel:${siteSettings.contact_phone || ''}`} className="hover:text-primary transition-colors">
+                  {siteSettings.contact_phone || ''}
                 </a>
               </li>
-              <li className="flex items-center"><span className="mr-2">🏢</span> 123 Auto Lane, Car City, CC 12345</li>
+              {siteSettings.contact_address && (
+                <li className="flex items-center">
+                  <span className="mr-2">📍</span>
+                  <span>{siteSettings.contact_address}</span>
+                </li>
+              )}
             </ul>
             <div className="flex space-x-4 mt-6">
               <a href="#" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors"><Facebook size={20} /></a>

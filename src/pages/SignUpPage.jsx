@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -19,16 +18,36 @@ const SignUpPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('+91 ');
   const [isLoading, setIsLoading] = useState(false);
+
+  const validateEmail = (email) => /\S+@\S+\.\S+/.test(email);
+  const validatePhone = (phone) => /^\+?\d{10,15}$/.test(phone.replace(/\s/g, ''));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!name.trim()) {
+      toast({ title: "Name required", description: "Please enter your full name.", variant: "destructive" });
+      return;
+    }
+    if (!validateEmail(email)) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+    if (password.length < 6) {
+      toast({ title: "Password too short", description: "Password must be at least 6 characters.", variant: "destructive" });
+      return;
+    }
     if (password !== confirmPassword) {
       toast({
         title: "Passwords do not match!",
         description: "Please ensure your passwords are the same.",
         variant: "destructive",
       });
+      return;
+    }
+    if (!validatePhone(phoneNumber)) {
+      toast({ title: "Invalid Phone Number", description: "Please enter a valid phone number (10-15 digits, with or without +).", variant: "destructive" });
       return;
     }
     setIsLoading(true);
@@ -39,7 +58,8 @@ const SignUpPage = () => {
         options: {
           data: {
             full_name: name,
-            role: 'user', // Default role
+            phone_number: phoneNumber,
+            role: 'user',
           }
         }
       });
@@ -48,32 +68,30 @@ const SignUpPage = () => {
         throw error;
       }
       
-      // Supabase signUp automatically signs in the user if email confirmation is not required.
-      // If email confirmation is required, data.user will be null initially until confirmed.
       if (data.user && data.session) {
-        // Store user token and data in localStorage
         localStorage.setItem('userToken', data.session.access_token);
-        
-        // Create a user data object with necessary information
+        await supabase.from('profiles').upsert({
+          id: data.user.id,
+          email: data.user.email,
+          full_name: name,
+          phone_number: phoneNumber,
+          role: 'user',
+        });
         const userData = {
           id: data.user.id,
           email: data.user.email,
           name: name || email.split('@')[0],
+          phone_number: phoneNumber,
           role: data.user.user_metadata?.role || 'user',
         };
-        
         localStorage.setItem('userData', JSON.stringify(userData));
-        
-        // Dispatch a storage event to notify other components
         window.dispatchEvent(new Event('storage'));
-        
         toast({ title: "Account Created! 🎉", description: "Welcome to Your2ndRide! You are now logged in." });
         navigate('/');
       } else if (data.session === null && !data.user) {
          toast({ title: "Confirmation Email Sent!", description: "Please check your email to confirm your account." });
-         navigate('/login'); // Redirect to login, user can login after confirmation
+         navigate('/login');
       } else {
-        // Fallback for unexpected response
         toast({ title: "Signup Successful", description: "Please check your email for a confirmation link if required, then log in." });
         navigate('/login');
       }
@@ -117,7 +135,6 @@ const SignUpPage = () => {
                   placeholder="John Doe"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  required
                   className="text-base py-3"
                 />
               </div>
@@ -129,7 +146,6 @@ const SignUpPage = () => {
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  required
                   className="text-base py-3"
                 />
               </div>
@@ -141,7 +157,6 @@ const SignUpPage = () => {
                   placeholder="•••••••• (min. 6 characters)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required
                   minLength={6}
                   className="text-base py-3"
                 />
@@ -154,7 +169,17 @@ const SignUpPage = () => {
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
+                  className="text-base py-3"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  placeholder="e.g. +91 1234567890"
+                  value={phoneNumber}
+                  onChange={e => setPhoneNumber(e.target.value)}
                   className="text-base py-3"
                 />
               </div>

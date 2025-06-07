@@ -375,6 +375,10 @@ const AdminSettingsPage = () => {
                 <Label htmlFor="contact_phone" className="text-lg">Contact Phone</Label>
                 <Input type="tel" id="contact_phone" name="contact_phone" value={siteSettings.contact_phone} onChange={handleInputChange} className="mt-1"/>
               </div>
+              <div>
+                <Label htmlFor="contact_address" className="text-lg">Contact Address</Label>
+                <Textarea id="contact_address" name="contact_address" value={siteSettings.contact_address || ''} onChange={handleInputChange} className="mt-1" rows={2} placeholder="123 Main St, Springfield, USA"/>
+              </div>
               {/* Add fields for address, social media links etc. */}
               <Button 
                 onClick={() => handleSaveSettings('Contact')} 

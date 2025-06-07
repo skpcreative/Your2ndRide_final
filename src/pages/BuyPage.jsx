@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Search, Filter, X, ArrowRight, ArrowUpDown, SortAsc, ChevronDown } from 'lucide-react';
+import { Search, Filter, X, ArrowRight, ArrowUpDown, SortAsc, ChevronDown, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
@@ -116,6 +115,20 @@ const BuyPage = () => {
   const [availableMakes, setAvailableMakes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortOption, setSortOption] = useState('newest'); // Default sort by newest
+  const [currentPage, setCurrentPage] = useState(1);
+  const CARDS_PER_PAGE = 10;
+
+  // Calculate paginated listings
+  const totalPages = Math.ceil(filteredListings.length / CARDS_PER_PAGE);
+  const paginatedListings = filteredListings.slice(
+    (currentPage - 1) * CARDS_PER_PAGE,
+    currentPage * CARDS_PER_PAGE
+  );
+
+  // Reset to page 1 when filters/search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, priceRange, selectedMakes, sortOption, allListings]);
 
   // Function to fetch listings
   const fetchListings = async () => {
@@ -232,6 +245,7 @@ const BuyPage = () => {
     result = sortListings(result, sortOption);
     
     setFilteredListings(result);
+    setCurrentPage(1); // Reset to first page when filters/search change
   }, [searchTerm, priceRange, selectedMakes, allListings, sortOption]);
   
   // Function to sort listings based on selected option
@@ -395,65 +409,83 @@ const BuyPage = () => {
               <p className="text-muted-foreground">Loading vehicles...</p>
             </div>
           ) : filteredListings.length > 0 ? (
-            <motion.div 
-              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8"
-              initial="hidden"
-              animate="visible"
-              variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
-            >
-              {filteredListings.map((listing) => (
-                <motion.div key={listing.id} variants={cardVariants}>
-                  <Card className="overflow-hidden shadow-lg hover:shadow-2xl transition-shadow duration-300 group flex flex-col h-full">
-                    <div className="relative h-56 bg-gray-200">
-                      {/* Vehicle image with multiple fallbacks */}
-                      <img    
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                        alt={listing.name || 'Vehicle image'} 
-                        src={listing.image} 
-                        onError={(e) => {
-                          console.log('Image failed to load, using smart fallback');
-                          e.target.onerror = null; 
-                          // Use our smart fallback system based on vehicle type
-                          e.target.src = getFallbackImage(listing.make, listing.model);
-                        }}
-                      />
-                      <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-3 py-1 text-xs font-semibold rounded-full shadow-md">
-                        {listing.make || 'Vehicle'}
+            <>
+              <motion.div 
+                className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+                initial="hidden"
+                animate="visible"
+                variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
+              >
+                {paginatedListings.map((listing) => (
+                  <motion.div key={listing.id} variants={cardVariants}>
+                    <Card className="rounded-xl shadow-md border border-primary/10 bg-white/95 hover:shadow-xl transition-all duration-200 flex flex-col h-full overflow-hidden group min-h-[280px] max-w-full">
+                      <div className="relative h-36 sm:h-40 md:h-48 overflow-hidden bg-white flex items-center justify-center">
+                        <img
+                          src={listing.image}
+                          alt={listing.name || 'Vehicle image'}
+                          className="max-h-full max-w-full object-contain p-2"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = getFallbackImage(listing.make, listing.model);
+                          }}
+                        />
                       </div>
-                      {listing.status === 'approved' && (
-                        <div className="absolute top-2 right-2 bg-green-600 text-white px-3 py-1 text-xs font-semibold rounded-full shadow-md">
-                          New
+                      <CardContent className="p-3 flex flex-col flex-grow">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-base font-bold text-primary truncate flex-1">{listing.name}</span>
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-accent text-accent-foreground border border-primary/20">{listing.year}</span>
                         </div>
-                      )}
-                    </div>
-                    <CardContent className="p-6 flex flex-col flex-grow">
-                      <CardTitle className="text-xl font-semibold mb-1 group-hover:text-primary transition-colors">
-                        {listing.name}
-                      </CardTitle>
-                      <div className="flex justify-between items-center">
-                        <p className="text-sm text-muted-foreground mb-1">
-                          {listing.year} {listing.mileage ? `• ${listing.mileage.toLocaleString()} miles` : ''}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(listing.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <p className="text-2xl font-bold text-primary mb-3">
-                        {listing.price ? `$${Number(listing.price).toLocaleString()}` : 'Contact for price'}
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        {listing.location || 'Location not specified'}
-                      </p>
-                      <Button asChild className="w-full mt-auto">
-                        <Link to={`/vehicle/${listing.id}`}>
-                          View Details <ArrowRight className="ml-2 h-4 w-4" />
-                        </Link>
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </motion.div>
+                        <div className="flex flex-wrap gap-1 mb-1">
+                          {listing.fuel_type && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-100 text-yellow-800 font-semibold">{listing.fuel_type}</span>}
+                          {listing.transmission && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800 font-semibold">{listing.transmission}</span>}
+                          {listing.body_type && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-800 font-semibold">{listing.body_type}</span>}
+                        </div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-base font-bold text-primary">{listing.price ? `$${Number(listing.price).toLocaleString()}` : 'Contact'}</span>
+                          {listing.location && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-semibold">
+                              {listing.location}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                          <span>{listing.mileage ? `${listing.mileage.toLocaleString()} mi` : '—'}</span>
+                          <span>•</span>
+                          <span>{new Date(listing.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <Button asChild className="w-full mt-auto text-xs font-semibold shadow bg-gradient-to-r from-primary to-accent hover:from-accent hover:to-primary transition-colors rounded-full py-2 h-8">
+                          <Link to={`/vehicle/${listing.id}`}>
+                            View Details <ArrowRight className="ml-1 h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </motion.div>
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-4 mt-8">
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-12 border-2 border-dashed border-muted-foreground/20 rounded-lg p-8">
               <div className="text-4xl mb-4">🔍</div>
